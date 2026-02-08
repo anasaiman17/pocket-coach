@@ -187,7 +187,7 @@ export function detectBadSpending(expenses: Expense[], budgets: Budget[]): BadSp
       alerts.push({
         id: `budget-${b.category}`, severity: 'high',
         title: `${b.category} Budget Exceeded`,
-        message: `Spent $${Math.round(spent)} against a $${b.limit} budget — ${Math.round((spent / b.limit - 1) * 100)}% over.`,
+        message: `Spent ₹${Math.round(spent)} against a ₹${b.limit} budget — ${Math.round((spent / b.limit - 1) * 100)}% over.`,
         suggestion: `Pause ${b.category} spending for the rest of the month.`,
         detectedAt: new Date().toISOString(),
       });
@@ -200,7 +200,7 @@ export function detectBadSpending(expenses: Expense[], budgets: Budget[]): BadSp
     alerts.push({
       id: 'leakage', severity: 'low',
       title: 'Budget Leakage Detected',
-      message: `${small.length} small purchases add up to $${Math.round(smallTotal)} (${Math.round(smallTotal / currTotal * 100)}% of total).`,
+      message: `${small.length} small purchases add up to ₹${Math.round(smallTotal)} (${Math.round(smallTotal / currTotal * 100)}% of total).`,
       suggestion: 'Consolidate small buys into planned shopping trips.',
       detectedAt: new Date().toISOString(),
     });
