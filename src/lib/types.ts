@@ -68,4 +68,4 @@ export const CATEGORY_ICONS: Record<Category, string> = {
 };
 
 export const formatCurrency = (amount: number) =>
-  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount);
