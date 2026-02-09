@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Receipt, BarChart3, Wallet, Brain, Sun, Moon, Shield } from 'lucide-react';
+import { LayoutDashboard, Receipt, BarChart3, Wallet, Brain, Sun, Moon, Shield, TrendingUp } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useExpenses } from '@/lib/ExpenseContext';
 import { Switch } from '@/components/ui/switch';
@@ -9,6 +9,7 @@ const nav = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/expenses', icon: Receipt, label: 'Expenses' },
   { to: '/analytics', icon: BarChart3, label: 'Analytics' },
+  { to: '/spending', icon: TrendingUp, label: 'Analysis' },
   { to: '/budgets', icon: Wallet, label: 'Budgets' },
   { to: '/insights', icon: Brain, label: 'Insights' },
 ];
