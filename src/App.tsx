@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,31 +13,44 @@ import SpendingAnalysis from "@/pages/SpendingAnalysis";
 import Budgets from "@/pages/Budgets";
 import Insights from "@/pages/Insights";
 import NotFound from "./pages/NotFound";
+import SplashScreen from "@/components/SplashScreen";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <ExpenseProvider>
-          <Layout>
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/expenses" element={<Expenses />} />
-              <Route path="/analytics" element={<Analytics />} />
-              <Route path="/spending" element={<SpendingAnalysis />} />
-              <Route path="/budgets" element={<Budgets />} />
-              <Route path="/insights" element={<Insights />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Layout>
-        </ExpenseProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 1800);
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <>
+      <SplashScreen show={loading} />
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <ExpenseProvider>
+              <Layout>
+                <Routes>
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/expenses" element={<Expenses />} />
+                  <Route path="/analytics" element={<Analytics />} />
+                  <Route path="/spending" element={<SpendingAnalysis />} />
+                  <Route path="/budgets" element={<Budgets />} />
+                  <Route path="/insights" element={<Insights />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Layout>
+            </ExpenseProvider>
+          </BrowserRouter>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </>
+  );
+};
 
 export default App;
