@@ -1,6 +1,12 @@
 import { createContext, useContext, useState, useEffect, useMemo, ReactNode, useCallback } from 'react';
 import { Expense, Budget, Insight, BadSpendingAlert, SpendingRisk } from './types';
-import { loadExpenses, saveExpenses, loadBudgets, saveBudgets, loadSettings, saveSettings, initializeSampleData } from './storage';
+import { initializeSampleData } from './storage';
+import {
+  dbLoadExpenses, dbSaveExpense, dbDeleteExpense, dbSaveAllExpenses,
+  dbLoadBudgets, dbSaveBudget, dbSaveAllBudgets,
+  dbLoadSetting, dbSaveSetting,
+  migrateFromLocalStorage
+} from './db';
 import { generateInsights, calculateHealthScore, detectBadSpending, calculateSpendingRisk } from './ai-engine';
 
 interface ExpenseContextType {
@@ -11,6 +17,7 @@ interface ExpenseContextType {
   healthScore: { score: number; factors: string[] };
   badSpendingAlerts: BadSpendingAlert[];
   spendingRisk: SpendingRisk;
+  isLoading: boolean;
   addExpense: (e: Omit<Expense, 'id' | 'createdAt'>) => void;
   updateExpense: (id: string, data: Partial<Expense>) => void;
   deleteExpense: (id: string) => void;
@@ -31,28 +38,53 @@ export function useExpenses() {
 }
 
 export function ExpenseProvider({ children }: { children: ReactNode }) {
-  const [expenses, setExpenses] = useState<Expense[]>(() => {
-    const stored = loadExpenses();
-    if (stored.length > 0) return stored;
-    const sample = initializeSampleData();
-    saveExpenses(sample.expenses);
-    saveBudgets(sample.budgets);
-    return sample.expenses;
-  });
-  const [budgets, setBudgetsState] = useState<Budget[]>(() => loadBudgets());
-  const [badSpendingMode, setBadSpendingMode] = useState(() => loadSettings().badSpendingMode ?? true);
-  const [theme, setTheme] = useState<'light' | 'dark'>(() =>
-    (localStorage.getItem('aei-theme') as 'light' | 'dark') || 'dark'
-  );
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [budgets, setBudgetsState] = useState<Budget[]>([]);
+  const [badSpendingMode, setBadSpendingMode] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
 
-  useEffect(() => { saveExpenses(expenses); }, [expenses]);
-  useEffect(() => { saveBudgets(budgets); }, [budgets]);
-  useEffect(() => { saveSettings({ badSpendingMode }); }, [badSpendingMode]);
+  // Load all data from IndexedDB on mount
+  useEffect(() => {
+    async function init() {
+      // Migrate any legacy localStorage data first
+      await migrateFromLocalStorage();
+
+      const [storedExpenses, storedBudgets, storedBadMode, storedTheme] = await Promise.all([
+        dbLoadExpenses(),
+        dbLoadBudgets(),
+        dbLoadSetting<boolean>('badSpendingMode', true),
+        dbLoadSetting<'light' | 'dark'>('theme', 'dark'),
+      ]);
+
+      if (storedExpenses.length > 0) {
+        setExpenses(storedExpenses);
+        setBudgetsState(storedBudgets);
+      } else {
+        // Seed sample data
+        const sample = initializeSampleData();
+        await dbSaveAllExpenses(sample.expenses);
+        await dbSaveAllBudgets(sample.budgets);
+        setExpenses(sample.expenses);
+        setBudgetsState(sample.budgets);
+      }
+
+      setBadSpendingMode(storedBadMode);
+      setTheme(storedTheme);
+      setIsLoading(false);
+    }
+    init();
+  }, []);
+
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
     document.documentElement.classList.toggle('light', theme === 'light');
-    localStorage.setItem('aei-theme', theme);
-  }, [theme]);
+    if (!isLoading) dbSaveSetting('theme', theme);
+  }, [theme, isLoading]);
+
+  useEffect(() => {
+    if (!isLoading) dbSaveSetting('badSpendingMode', badSpendingMode);
+  }, [badSpendingMode, isLoading]);
 
   const insights = useMemo(() => generateInsights(expenses, budgets), [expenses, budgets]);
   const healthScore = useMemo(() => calculateHealthScore(expenses, budgets), [expenses, budgets]);
@@ -63,26 +95,38 @@ export function ExpenseProvider({ children }: { children: ReactNode }) {
   const spendingRisk = useMemo(() => calculateSpendingRisk(expenses, budgets), [expenses, budgets]);
 
   const addExpense = useCallback((data: Omit<Expense, 'id' | 'createdAt'>) => {
-    setExpenses(prev => [...prev, { ...data, id: crypto.randomUUID(), createdAt: new Date().toISOString() }]);
+    const expense: Expense = { ...data, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
+    setExpenses(prev => [...prev, expense]);
+    dbSaveExpense(expense);
   }, []);
 
   const updateExpense = useCallback((id: string, data: Partial<Expense>) => {
-    setExpenses(prev => prev.map(e => (e.id === id ? { ...e, ...data } : e)));
+    setExpenses(prev => {
+      const updated = prev.map(e => (e.id === id ? { ...e, ...data } : e));
+      const expense = updated.find(e => e.id === id);
+      if (expense) dbSaveExpense(expense);
+      return updated;
+    });
   }, []);
 
   const deleteExpense = useCallback((id: string) => {
     setExpenses(prev => prev.filter(e => e.id !== id));
+    dbDeleteExpense(id);
   }, []);
 
   const setBudget = useCallback((category: string, limit: number, month: string) => {
     setBudgetsState(prev => {
       const idx = prev.findIndex(b => b.category === category && b.month === month);
+      let updated: Budget[];
       if (idx >= 0) {
-        const u = [...prev];
-        u[idx] = { ...u[idx], limit };
-        return u;
+        updated = [...prev];
+        updated[idx] = { ...updated[idx], limit };
+      } else {
+        updated = [...prev, { category: category as any, limit, month }];
       }
-      return [...prev, { category: category as any, limit, month }];
+      const budget = updated.find(b => b.category === category && b.month === month)!;
+      dbSaveBudget(budget);
+      return updated;
     });
   }, []);
 
@@ -96,11 +140,17 @@ export function ExpenseProvider({ children }: { children: ReactNode }) {
     URL.revokeObjectURL(url);
   }, [expenses, budgets]);
 
-  const importData = useCallback((json: string) => {
+  const importData = useCallback(async (json: string) => {
     try {
       const d = JSON.parse(json);
-      if (d.expenses) setExpenses(d.expenses);
-      if (d.budgets) setBudgetsState(d.budgets);
+      if (d.expenses) {
+        await dbSaveAllExpenses(d.expenses);
+        setExpenses(d.expenses);
+      }
+      if (d.budgets) {
+        await dbSaveAllBudgets(d.budgets);
+        setBudgetsState(d.budgets);
+      }
     } catch (e) {
       console.error('Import failed:', e);
     }
@@ -109,6 +159,7 @@ export function ExpenseProvider({ children }: { children: ReactNode }) {
   return (
     <Ctx.Provider value={{
       expenses, budgets, badSpendingMode, insights, healthScore, badSpendingAlerts, spendingRisk,
+      isLoading,
       addExpense, updateExpense, deleteExpense, setBudget,
       toggleBadSpendingMode: () => setBadSpendingMode(p => !p),
       exportData, importData, theme,
