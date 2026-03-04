@@ -81,33 +81,81 @@ function tryParseDate(raw: string): string | null {
   return null;
 }
 
+/**
+ * GPay / PhonePe / Paytm PDF format:
+ *   Date         | Merchant Name   | Debit/Credit | ₹Amount
+ *   Jan 15, 2024 | Swiggy          | Debit        | ₹250.00
+ *
+ * Also handles generic formats where date + amount appear on same line.
+ */
 function extractExpensesFromText(text: string): ParsedExpense[] {
-  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  // Normalize whitespace so multi-column PDFs become single lines
+  const rawLines = text.split('\n').map(l => l.trim()).filter(Boolean);
   const results: ParsedExpense[] = [];
 
-  // Pattern: find lines containing a date and amount
-  const amountPattern = /(?:rs\.?|inr|₹)\s?([\d,]+(?:\.\d{1,2})?)|(?:^|\s)([\d,]+\.\d{2})(?:\s|$)/i;
-  const datePattern = /\b(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}|\d{4}[-\/]\d{2}[-\/]\d{2}|[a-z]{3}\w*\s+\d{1,2}[,\s]+\d{4}|\d{1,2}\s+[a-z]{3}\w*[,\s]+\d{4})\b/i;
+  // GPay-style: join every 4 consecutive lines as one logical row when
+  // the first line looks like a date (common in PDF column extraction)
+  const gpayDatePattern = /^([A-Z][a-z]{2}\s+\d{1,2},?\s+\d{4})/;
+  const amountPattern = /(?:rs\.?|inr|₹)\s*([\d,]+(?:\.\d{1,2})?)|(?:^|\s)([\d,]+\.\d{2})(?:\s|$)/i;
+  const genericDatePattern = /\b(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}|\d{4}[-\/]\d{2}[-\/]\d{2}|[A-Z][a-z]{2,8}\.?\s+\d{1,2}[,\s]+\d{4}|\d{1,2}\s+[A-Z][a-z]{2,8}\.?[,\s]+\d{4})\b/;
 
-  for (const line of lines) {
-    const dateMatch = line.match(datePattern);
-    const amountMatch = line.match(amountPattern);
+  // --- Strategy 1: GPay column-split (date on its own line followed by merchant, type, amount) ---
+  let i = 0;
+  while (i < rawLines.length) {
+    const line = rawLines[i];
+    if (gpayDatePattern.test(line)) {
+      // Collect up to 4 lines starting from date
+      const chunk = rawLines.slice(i, i + 6).join(' ');
+      const dateStr = tryParseDate(line);
+      const amtMatch = chunk.match(amountPattern);
+      const isDebit = /debit|paid|sent|debited/i.test(chunk);
+      const isCredit = /credit|received|credited/i.test(chunk);
 
-    if (dateMatch && amountMatch) {
-      const dateStr = tryParseDate(dateMatch[1]);
-      const amountRaw = (amountMatch[1] || amountMatch[2]).replace(/,/g, '');
-      const amount = parseFloat(amountRaw);
-
-      if (dateStr && !isNaN(amount) && amount > 0 && amount < 10000000) {
-        results.push({
-          date: dateStr,
-          amount,
-          category: guessCategory(line),
-          paymentMode: guessPaymentMode(line),
-          notes: line.slice(0, 80),
-        });
+      if (dateStr && amtMatch && isDebit) {
+        const amountRaw = (amtMatch[1] || amtMatch[2]).replace(/,/g, '');
+        const amount = parseFloat(amountRaw);
+        if (!isNaN(amount) && amount > 0) {
+          // Merchant name is usually the next non-empty line after date
+          const merchant = rawLines[i + 1] || '';
+          results.push({
+            date: dateStr,
+            amount,
+            category: guessCategory(merchant + ' ' + chunk),
+            paymentMode: 'UPI',
+            notes: merchant.slice(0, 80) || chunk.slice(0, 80),
+          });
+          i += 4;
+          continue;
+        }
+      }
+      // Credit rows — skip (money received, not spent)
+      if (dateStr && isCredit) {
+        i += 4;
+        continue;
       }
     }
+
+    // --- Strategy 2: Generic single-line with date + amount ---
+    const dateMatch = line.match(genericDatePattern);
+    const amtMatch = line.match(amountPattern);
+    if (dateMatch && amtMatch) {
+      const dateStr = tryParseDate(dateMatch[1]);
+      const amountRaw = (amtMatch[1] || amtMatch[2]).replace(/,/g, '');
+      const amount = parseFloat(amountRaw);
+      if (dateStr && !isNaN(amount) && amount > 0 && amount < 10000000) {
+        const isCredit = /credit|received|credited/i.test(line);
+        if (!isCredit) {
+          results.push({
+            date: dateStr,
+            amount,
+            category: guessCategory(line),
+            paymentMode: guessPaymentMode(line),
+            notes: line.slice(0, 80),
+          });
+        }
+      }
+    }
+    i++;
   }
 
   return results;
