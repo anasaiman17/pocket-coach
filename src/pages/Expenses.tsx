@@ -15,6 +15,7 @@ export default function Expenses() {
   const { expenses, deleteExpense, exportData, importData } = useExpenses();
   const [formOpen, setFormOpen] = useState(false);
   const [csvOpen, setCsvOpen] = useState(false);
+  const [pdfOpen, setPdfOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | undefined>();
   const [search, setSearch] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
