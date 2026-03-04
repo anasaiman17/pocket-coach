@@ -184,8 +184,6 @@ export default function PdfImportModal({ open, onOpenChange }: Props) {
       category: exp.category,
       paymentMode: exp.paymentMode,
       notes: exp.notes,
-      isRecurring: false,
-      tags: [],
     }));
     setImportedCount(parsed.length);
     setStep('done');
