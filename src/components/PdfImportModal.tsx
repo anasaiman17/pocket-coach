@@ -279,7 +279,7 @@ export default function PdfImportModal({ open, onOpenChange }: Props) {
                     </div>
                     <div>
                       <p className="font-medium">Drop PDF here or click to browse</p>
-                      <p className="text-sm text-muted-foreground mt-1">Bank statements, UPI summaries, expense reports</p>
+                      <p className="text-sm text-muted-foreground mt-1">GPay, PhonePe, Paytm statements & bank PDFs</p>
                     </div>
                   </div>
                 )}
