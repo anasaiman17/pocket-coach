@@ -122,6 +122,7 @@ export default function Expenses() {
 
       <ExpenseForm open={formOpen} onOpenChange={setFormOpen} expense={editingExpense} />
       <CsvImportModal open={csvOpen} onOpenChange={setCsvOpen} />
+      <PdfImportModal open={pdfOpen} onOpenChange={setPdfOpen} />
     </motion.div>
   );
 }
