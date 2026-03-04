@@ -1,12 +1,13 @@
 import { useState, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Trash2, Edit, Download, Upload, Search, FileUp } from 'lucide-react';
+import { Plus, Trash2, Edit, Download, Upload, Search, FileUp, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useExpenses } from '@/lib/ExpenseContext';
 import { formatCurrency, CATEGORY_ICONS, Category } from '@/lib/types';
 import ExpenseForm from '@/components/ExpenseForm';
 import CsvImportModal from '@/components/CsvImportModal';
+import PdfImportModal from '@/components/PdfImportModal';
 import { format, parseISO } from 'date-fns';
 import type { Expense } from '@/lib/types';
 
