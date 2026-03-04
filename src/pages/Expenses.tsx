@@ -58,6 +58,7 @@ export default function Expenses() {
           <Button variant="outline" size="sm" onClick={exportData}><Download size={14} className="mr-1.5" />Export</Button>
           <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}><Upload size={14} className="mr-1.5" />Import JSON</Button>
           <Button variant="outline" size="sm" onClick={() => setCsvOpen(true)}><FileUp size={14} className="mr-1.5" />Import CSV</Button>
+          <Button variant="outline" size="sm" onClick={() => setPdfOpen(true)}><FileText size={14} className="mr-1.5" />Import PDF</Button>
           <input ref={fileRef} type="file" accept=".json" className="hidden" onChange={handleImport} />
           <Button size="sm" onClick={handleAdd}><Plus size={14} className="mr-1.5" />Add Expense</Button>
         </div>
