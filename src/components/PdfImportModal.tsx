@@ -69,14 +69,23 @@ function tryParseDate(raw: string): string | null {
     jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06',
     jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12'
   };
-  const m2 = cleaned.match(/(\d{1,2})\s+([a-z]{3})[a-z]*[\s,]+(\d{4})/i) ||
-             cleaned.match(/([a-z]{3})[a-z]*\s+(\d{1,2})[\s,]+(\d{4})/i);
+  // "Jan 15, 2024" or "Jan 15 2024" (GPay format)
+  const gpay = cleaned.match(/^([A-Z][a-z]{2,8})\.?\s+(\d{1,2}),?\s+(\d{4})$/i);
+  if (gpay) {
+    const mon = monthNames[gpay[1].toLowerCase().slice(0, 3)];
+    if (mon) return `${gpay[3]}-${mon}-${gpay[2].padStart(2, '0')}`;
+  }
+  // "15 Jan 2024" or "15 Jan, 2024"
+  const m2 = cleaned.match(/^(\d{1,2})\s+([A-Z][a-z]{2,8})\.?[,\s]+(\d{4})$/i);
   if (m2) {
-    const isFirst = /^\d/.test(m2[0]);
-    const day = isFirst ? m2[1].padStart(2, '0') : m2[2].padStart(2, '0');
-    const mon = isFirst ? monthNames[m2[2].toLowerCase().slice(0, 3)] : monthNames[m2[1].toLowerCase().slice(0, 3)];
-    const yr = isFirst ? m2[3] : m2[3];
-    if (mon) return `${yr}-${mon}-${day}`;
+    const mon = monthNames[m2[2].toLowerCase().slice(0, 3)];
+    if (mon) return `${m2[3]}-${mon}-${m2[1].padStart(2, '0')}`;
+  }
+  // Inline date within a longer string — "Jan 15, 2024" anywhere
+  const inline = cleaned.match(/([A-Z][a-z]{2,8})\.?\s+(\d{1,2})[,\s]+(\d{4})/i);
+  if (inline) {
+    const mon = monthNames[inline[1].toLowerCase().slice(0, 3)];
+    if (mon) return `${inline[3]}-${mon}-${inline[2].padStart(2, '0')}`;
   }
   return null;
 }
