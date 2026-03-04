@@ -1,12 +1,13 @@
 import { useState, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Trash2, Edit, Download, Upload, Search, FileUp } from 'lucide-react';
+import { Plus, Trash2, Edit, Download, Upload, Search, FileUp, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useExpenses } from '@/lib/ExpenseContext';
 import { formatCurrency, CATEGORY_ICONS, Category } from '@/lib/types';
 import ExpenseForm from '@/components/ExpenseForm';
 import CsvImportModal from '@/components/CsvImportModal';
+import PdfImportModal from '@/components/PdfImportModal';
 import { format, parseISO } from 'date-fns';
 import type { Expense } from '@/lib/types';
 
@@ -14,6 +15,7 @@ export default function Expenses() {
   const { expenses, deleteExpense, exportData, importData } = useExpenses();
   const [formOpen, setFormOpen] = useState(false);
   const [csvOpen, setCsvOpen] = useState(false);
+  const [pdfOpen, setPdfOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | undefined>();
   const [search, setSearch] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
@@ -56,6 +58,7 @@ export default function Expenses() {
           <Button variant="outline" size="sm" onClick={exportData}><Download size={14} className="mr-1.5" />Export</Button>
           <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}><Upload size={14} className="mr-1.5" />Import JSON</Button>
           <Button variant="outline" size="sm" onClick={() => setCsvOpen(true)}><FileUp size={14} className="mr-1.5" />Import CSV</Button>
+          <Button variant="outline" size="sm" onClick={() => setPdfOpen(true)}><FileText size={14} className="mr-1.5" />Import PDF</Button>
           <input ref={fileRef} type="file" accept=".json" className="hidden" onChange={handleImport} />
           <Button size="sm" onClick={handleAdd}><Plus size={14} className="mr-1.5" />Add Expense</Button>
         </div>
@@ -119,6 +122,7 @@ export default function Expenses() {
 
       <ExpenseForm open={formOpen} onOpenChange={setFormOpen} expense={editingExpense} />
       <CsvImportModal open={csvOpen} onOpenChange={setCsvOpen} />
+      <PdfImportModal open={pdfOpen} onOpenChange={setPdfOpen} />
     </motion.div>
   );
 }
