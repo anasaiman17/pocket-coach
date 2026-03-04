@@ -271,7 +271,7 @@ export default function PdfImportModal({ open, onOpenChange }: Props) {
 
           {step === 'done' && (
             <motion.div key="done" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center gap-4 py-8 text-center">
-              <CheckCircle size={48} className="text-green-500" />
+              <CheckCircle size={48} className="text-primary" />
               <div>
                 <p className="text-lg font-semibold">Import Complete!</p>
                 <p className="text-sm text-muted-foreground mt-1">{importedCount} transactions added successfully.</p>
