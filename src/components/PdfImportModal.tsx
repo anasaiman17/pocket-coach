@@ -41,7 +41,7 @@ function guessPaymentMode(text: string): PaymentMode {
   if (/upi|gpay|phonepe|paytm|bhim/.test(t)) return 'UPI';
   if (/credit/.test(t)) return 'Credit Card';
   if (/debit/.test(t)) return 'Debit Card';
-  if (/net ?banking|neft|imps|rtgs/.test(t)) return 'Net Banking';
+  if (/net ?banking|neft|imps|rtgs/.test(t)) return 'Bank Transfer';
   if (/cash/.test(t)) return 'Cash';
   return 'UPI';
 }
