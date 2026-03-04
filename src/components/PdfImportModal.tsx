@@ -259,7 +259,7 @@ export default function PdfImportModal({ open, onOpenChange }: Props) {
         <AnimatePresence mode="wait">
           {step === 'upload' && (
             <motion.div key="upload" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
-              <p className="text-sm text-muted-foreground">Upload a bank statement or expense PDF. Works best with text-based PDFs (not scanned images).</p>
+              <p className="text-sm text-muted-foreground">Upload a GPay, PhonePe, Paytm, or bank statement PDF. Only <strong>Debit</strong> transactions are imported. Works with text-based PDFs (not scanned images).</p>
               <div
                 onDragOver={e => { e.preventDefault(); setDragging(true); }}
                 onDragLeave={() => setDragging(false)}
