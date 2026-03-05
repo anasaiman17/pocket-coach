@@ -179,7 +179,10 @@ export default function PdfImportModal({ open, onOpenChange }: Props) {
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
         const content = await page.getTextContent();
-        fullText += content.items.map((item: any) => item.str).join(' ') + '\n';
+        // Join all tokens with a space to form a continuous string per page
+        // This preserves "01 Feb, 2026 11:07 AM Paid to slice ₹9,434" patterns
+        const pageText = content.items.map((item: any) => item.str).join(' ');
+        fullText += pageText + ' ';
       }
       const expenses = extractExpensesFromText(fullText);
       if (expenses.length === 0) {
