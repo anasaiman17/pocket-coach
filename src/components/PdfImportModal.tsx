@@ -46,125 +46,101 @@ function guessPaymentMode(text: string): PaymentMode {
   return 'UPI';
 }
 
+const MONTH_MAP: Record<string, string> = {
+  jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06',
+  jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12',
+};
+
 function tryParseDate(raw: string): string | null {
   const cleaned = raw.trim();
-  const formats = [
-    /^(\d{2})[-\/](\d{2})[-\/](\d{4})$/,   // DD-MM-YYYY
-    /^(\d{4})[-\/](\d{2})[-\/](\d{2})$/,   // YYYY-MM-DD
-    /^(\d{2})[-\/](\d{2})[-\/](\d{2})$/,   // DD-MM-YY
-  ];
-  for (const fmt of formats) {
-    const m = cleaned.match(fmt);
-    if (m) {
-      if (fmt === formats[0]) return `${m[3]}-${m[2]}-${m[1]}`;
-      if (fmt === formats[1]) return `${m[1]}-${m[2]}-${m[3]}`;
-      if (fmt === formats[2]) {
-        const yr = parseInt(m[3]) > 50 ? `19${m[3]}` : `20${m[3]}`;
-        return `${yr}-${m[2]}-${m[1]}`;
-      }
-    }
+
+  // "01 Feb, 2026" or "1 Feb 2026" — GPay's actual format
+  const m1 = cleaned.match(/^(\d{1,2})\s+([A-Za-z]{3}),?\s+(\d{4})$/);
+  if (m1) {
+    const mon = MONTH_MAP[m1[2].toLowerCase()];
+    if (mon) return `${m1[3]}-${mon}-${m1[1].padStart(2, '0')}`;
   }
-  // Try natural date like "Jan 12, 2024" or "12 Jan 2024"
-  const monthNames: Record<string, string> = {
-    jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06',
-    jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12'
-  };
-  // "Jan 15, 2024" or "Jan 15 2024" (GPay format)
-  const gpay = cleaned.match(/^([A-Z][a-z]{2,8})\.?\s+(\d{1,2}),?\s+(\d{4})$/i);
-  if (gpay) {
-    const mon = monthNames[gpay[1].toLowerCase().slice(0, 3)];
-    if (mon) return `${gpay[3]}-${mon}-${gpay[2].padStart(2, '0')}`;
-  }
-  // "15 Jan 2024" or "15 Jan, 2024"
-  const m2 = cleaned.match(/^(\d{1,2})\s+([A-Z][a-z]{2,8})\.?[,\s]+(\d{4})$/i);
+
+  // "Feb 01, 2026" or "Feb 1 2026"
+  const m2 = cleaned.match(/^([A-Za-z]{3})\s+(\d{1,2}),?\s+(\d{4})$/);
   if (m2) {
-    const mon = monthNames[m2[2].toLowerCase().slice(0, 3)];
-    if (mon) return `${m2[3]}-${mon}-${m2[1].padStart(2, '0')}`;
+    const mon = MONTH_MAP[m2[1].toLowerCase()];
+    if (mon) return `${m2[3]}-${mon}-${m2[2].padStart(2, '0')}`;
   }
-  // Inline date within a longer string — "Jan 15, 2024" anywhere
-  const inline = cleaned.match(/([A-Z][a-z]{2,8})\.?\s+(\d{1,2})[,\s]+(\d{4})/i);
-  if (inline) {
-    const mon = monthNames[inline[1].toLowerCase().slice(0, 3)];
-    if (mon) return `${inline[3]}-${mon}-${inline[2].padStart(2, '0')}`;
-  }
+
+  // Numeric formats DD-MM-YYYY / DD/MM/YYYY
+  const m3 = cleaned.match(/^(\d{2})[-\/](\d{2})[-\/](\d{4})$/);
+  if (m3) return `${m3[3]}-${m3[2]}-${m3[1]}`;
+
+  // YYYY-MM-DD
+  const m4 = cleaned.match(/^(\d{4})[-\/](\d{2})[-\/](\d{2})$/);
+  if (m4) return `${m4[1]}-${m4[2]}-${m4[3]}`;
+
   return null;
 }
 
 /**
- * GPay / PhonePe / Paytm PDF format:
- *   Date         | Merchant Name   | Debit/Credit | ₹Amount
- *   Jan 15, 2024 | Swiggy          | Debit        | ₹250.00
+ * Parses GPay PDF text.
+ * pdfjs extracts each page as space-joined tokens in one line.
+ * GPay rows look like:
+ *   "... 01 Feb, 2026 11:07 AM Paid to slice ₹9,434 Paid by Indian Overseas Bank 4756 ..."
  *
- * Also handles generic formats where date + amount appear on same line.
+ * We tokenize the full text and look for date tokens followed by Paid/Received + merchant + amount.
  */
 function extractExpensesFromText(text: string): ParsedExpense[] {
-  // Normalize whitespace so multi-column PDFs become single lines
-  const rawLines = text.split('\n').map(l => l.trim()).filter(Boolean);
   const results: ParsedExpense[] = [];
 
-  // GPay-style: join every 4 consecutive lines as one logical row when
-  // the first line looks like a date (common in PDF column extraction)
-  const gpayDatePattern = /^([A-Z][a-z]{2}\s+\d{1,2},?\s+\d{4})/;
-  const amountPattern = /(?:rs\.?|inr|₹)\s*([\d,]+(?:\.\d{1,2})?)|(?:^|\s)([\d,]+\.\d{2})(?:\s|$)/i;
-  const genericDatePattern = /\b(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}|\d{4}[-\/]\d{2}[-\/]\d{2}|[A-Z][a-z]{2,8}\.?\s+\d{1,2}[,\s]+\d{4}|\d{1,2}\s+[A-Z][a-z]{2,8}\.?[,\s]+\d{4})\b/;
+  // GPay date pattern: "01 Feb, 2026" — two tokens "01" + "Feb," + "2026"
+  // We search using regex on the whole text (pdfjs joins with spaces)
+  // Pattern: DD Mon, YYYY [time] [Paid to|Received from] merchant ₹amount
+  const txnPattern =
+    /(\d{1,2}\s+[A-Za-z]{3},?\s+\d{4})\s+\d{1,2}:\d{2}\s+[AP]M\s+(Paid to|Paid by|Received from|Received by)\s+([^₹\n]+?)\s+₹([\d,]+(?:\.\d{1,2})?)/gi;
 
-  // --- Strategy 1: GPay column-split (date on its own line followed by merchant, type, amount) ---
-  let i = 0;
-  while (i < rawLines.length) {
-    const line = rawLines[i];
-    if (gpayDatePattern.test(line)) {
-      // Collect up to 4 lines starting from date
-      const chunk = rawLines.slice(i, i + 6).join(' ');
-      const dateStr = tryParseDate(line);
-      const amtMatch = chunk.match(amountPattern);
-      const isDebit = /debit|paid|sent|debited/i.test(chunk);
-      const isCredit = /credit|received|credited/i.test(chunk);
+  let match: RegExpExecArray | null;
+  while ((match = txnPattern.exec(text)) !== null) {
+    const [, rawDate, direction, merchantRaw, amountRaw] = match;
+    // Only import "Paid to" (money sent = expense). Skip "Paid by" (bank leg), "Received from" (income).
+    if (!/^Paid to$/i.test(direction.trim())) continue;
 
-      if (dateStr && amtMatch && isDebit) {
-        const amountRaw = (amtMatch[1] || amtMatch[2]).replace(/,/g, '');
-        const amount = parseFloat(amountRaw);
-        if (!isNaN(amount) && amount > 0) {
-          // Merchant name is usually the next non-empty line after date
-          const merchant = rawLines[i + 1] || '';
-          results.push({
-            date: dateStr,
-            amount,
-            category: guessCategory(merchant + ' ' + chunk),
-            paymentMode: 'UPI',
-            notes: merchant.slice(0, 80) || chunk.slice(0, 80),
-          });
-          i += 4;
-          continue;
-        }
-      }
-      // Credit rows — skip (money received, not spent)
-      if (dateStr && isCredit) {
-        i += 4;
-        continue;
-      }
+    const dateStr = tryParseDate(rawDate.trim());
+    if (!dateStr) continue;
+
+    const amount = parseFloat(amountRaw.replace(/,/g, ''));
+    if (isNaN(amount) || amount <= 0) continue;
+
+    const merchant = merchantRaw.replace(/UPI Transaction ID:.*$/i, '').trim();
+
+    results.push({
+      date: dateStr,
+      amount,
+      category: guessCategory(merchant),
+      paymentMode: 'UPI',
+      notes: merchant.slice(0, 80),
+    });
+  }
+
+  // Fallback: generic single-line with date + ₹amount (for other bank PDFs)
+  if (results.length === 0) {
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    const datePattern = /\b(\d{1,2}\s+[A-Za-z]{3},?\s+\d{4}|[A-Za-z]{3}\s+\d{1,2},?\s+\d{4}|\d{2}[-\/]\d{2}[-\/]\d{4})\b/;
+    const amtPattern = /₹\s*([\d,]+(?:\.\d{1,2})?)/;
+    for (const line of lines) {
+      const dm = line.match(datePattern);
+      const am = line.match(amtPattern);
+      if (!dm || !am) continue;
+      const isCredit = /received|credit/i.test(line);
+      if (isCredit) continue;
+      const dateStr = tryParseDate(dm[1]);
+      const amount = parseFloat(am[1].replace(/,/g, ''));
+      if (!dateStr || isNaN(amount) || amount <= 0) continue;
+      results.push({
+        date: dateStr,
+        amount,
+        category: guessCategory(line),
+        paymentMode: guessPaymentMode(line),
+        notes: line.slice(0, 80),
+      });
     }
-
-    // --- Strategy 2: Generic single-line with date + amount ---
-    const dateMatch = line.match(genericDatePattern);
-    const amtMatch = line.match(amountPattern);
-    if (dateMatch && amtMatch) {
-      const dateStr = tryParseDate(dateMatch[1]);
-      const amountRaw = (amtMatch[1] || amtMatch[2]).replace(/,/g, '');
-      const amount = parseFloat(amountRaw);
-      if (dateStr && !isNaN(amount) && amount > 0 && amount < 10000000) {
-        const isCredit = /credit|received|credited/i.test(line);
-        if (!isCredit) {
-          results.push({
-            date: dateStr,
-            amount,
-            category: guessCategory(line),
-            paymentMode: guessPaymentMode(line),
-            notes: line.slice(0, 80),
-          });
-        }
-      }
-    }
-    i++;
   }
 
   return results;
