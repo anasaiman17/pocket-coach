@@ -238,7 +238,40 @@ export default function PdfImportModal({ open, onOpenChange }: Props) {
         <AnimatePresence mode="wait">
           {step === 'upload' && (
             <motion.div key="upload" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
-              <p className="text-sm text-muted-foreground">Upload a GPay, PhonePe, Paytm, or bank statement PDF. Only <strong>Debit</strong> transactions are imported. Works with text-based PDFs (not scanned images).</p>
+              <p className="text-sm text-muted-foreground">Upload a GPay, PhonePe, Paytm, or bank statement PDF. Only <strong>Paid</strong> transactions are imported (credits/received are skipped).</p>
+              <div className="rounded-lg border border-border bg-muted/40 p-3 space-y-2 text-xs text-muted-foreground">
+                <p className="font-semibold text-foreground text-sm">📄 Supported PDF Format</p>
+                <p>Your PDF should have rows in this structure:</p>
+                <div className="rounded-md bg-background border border-border overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="text-left px-3 py-1.5 font-medium text-foreground">Date &amp; Time</th>
+                        <th className="text-left px-3 py-1.5 font-medium text-foreground">Transaction</th>
+                        <th className="text-right px-3 py-1.5 font-medium text-foreground">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-b border-border/50">
+                        <td className="px-3 py-1.5">01 Feb, 2026 · 11:07 AM</td>
+                        <td className="px-3 py-1.5">Paid to Swiggy</td>
+                        <td className="px-3 py-1.5 text-right">₹250</td>
+                      </tr>
+                      <tr>
+                        <td className="px-3 py-1.5">02 Feb, 2026 · 09:15 AM</td>
+                        <td className="px-3 py-1.5">Paid to Zomato</td>
+                        <td className="px-3 py-1.5 text-right">₹180</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <ul className="space-y-0.5 list-disc list-inside">
+                  <li>Date format: <span className="font-medium text-foreground">DD Mon, YYYY</span> (e.g. 01 Feb, 2026)</li>
+                  <li>Works with <span className="font-medium text-foreground">GPay</span> transaction statement PDFs</li>
+                  <li>Must be a <span className="font-medium text-foreground">text-based PDF</span>, not a scanned image</li>
+                  <li>Export via GPay → Profile → Transaction history → Download</li>
+                </ul>
+              </div>
               <div
                 onDragOver={e => { e.preventDefault(); setDragging(true); }}
                 onDragLeave={() => setDragging(false)}
