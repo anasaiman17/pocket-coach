@@ -94,7 +94,7 @@ function parseCSV(text: string): { headers: string[]; rows: string[][] } {
 }
 
 function autoMap(headers: string[]): Partial<ColumnMap> {
-  const h = headers.map(h => h.toLowerCase());
+  const h = headers.map(h => h.toLowerCase().trim());
   const find = (...keys: string[]) => {
     for (const k of keys) {
       const i = h.findIndex(hh => hh.includes(k));
@@ -103,11 +103,11 @@ function autoMap(headers: string[]): Partial<ColumnMap> {
     return undefined;
   };
   return {
-    date: find('date', 'time', 'txn date', 'transaction date'),
-    amount: find('amount', 'debit', 'credit', 'sum', 'value', 'inr', 'rs'),
-    category: find('category', 'cat', 'type', 'description', 'desc', 'narration', 'particulars', 'remarks'),
-    paymentMode: find('payment', 'mode', 'method', 'channel'),
-    notes: find('note', 'description', 'narration', 'remark', 'memo', 'detail'),
+    date: find('date', 'txn date', 'transaction date', 'value date', 'posting date', 'time'),
+    amount: find('debit', 'withdrawal', 'amount', 'dr', 'credit', 'sum', 'inr', 'rs', 'value'),
+    category: find('narration', 'description', 'particulars', 'remarks', 'category', 'cat', 'type', 'desc', 'detail'),
+    paymentMode: find('payment', 'mode', 'method', 'channel', 'instrument'),
+    notes: find('note', 'narration', 'description', 'remark', 'memo', 'detail', 'ref'),
   };
 }
 
@@ -160,12 +160,15 @@ export default function CsvImportModal({ open, onOpenChange }: Props) {
     const errs: string[] = [];
     let count = 0;
     for (const row of rows) {
+      // skip completely empty rows
+      if (row.every(cell => !cell.trim())) continue;
       const get = (col?: string) => (col && col !== NONE) ? (row[headers.indexOf(col)] ?? '') : '';
       const rawDate = get(colMap.date);
       const rawAmount = get(colMap.amount);
       const date = tryParseDate(rawDate);
-      const amount = parseFloat(rawAmount.replace(/[^0-9.-]/g, ''));
-      if (!date || isNaN(amount) || amount <= 0) { errs.push(`Skipped row: invalid date "${rawDate}" or amount "${rawAmount}"`); continue; }
+      // strip currency symbols, spaces, commas; take absolute value so debits with "-" sign still import
+      const amount = Math.abs(parseFloat(rawAmount.replace(/[^0-9.-]/g, '')));
+      if (!date || isNaN(amount) || amount === 0) { errs.push(`Skipped row: invalid date "${rawDate}" or amount "${rawAmount}"`); continue; }
       const rawCat = get(colMap.category);
       const rawPay = get(colMap.paymentMode);
       const notes = get(colMap.notes);
