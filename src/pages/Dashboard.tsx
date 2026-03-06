@@ -6,6 +6,16 @@ import { useExpenses } from '@/lib/ExpenseContext';
 import { formatCurrency, CATEGORY_COLORS, CATEGORY_ICONS, Category } from '@/lib/types';
 import { getMonthlyTotals, getCategoryBreakdown } from '@/lib/ai-engine';
 import { format, parseISO, isSameMonth } from 'date-fns';
+
+// Safely parse both 'yyyy-MM-dd' and full ISO strings without timezone shift
+function safeParseDate(dateStr: string): Date {
+  if (!dateStr) return new Date(NaN);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+  return parseISO(dateStr);
+}
 import { Link } from 'react-router-dom';
 
 export default function Dashboard() {
