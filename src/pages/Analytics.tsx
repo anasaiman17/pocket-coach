@@ -23,7 +23,7 @@ export default function Analytics() {
 
   const currentMonth = useMemo(() => {
     const now = new Date();
-    return expenses.filter(e => isSameMonth(parseISO(e.date), now));
+    return expenses.filter(e => isSameMonth(safeParseDate(e.date), now));
   }, [expenses]);
 
   const categoryData = useMemo(() => getCategoryBreakdown(currentMonth), [currentMonth]);
