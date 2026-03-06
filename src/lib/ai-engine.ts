@@ -71,7 +71,7 @@ export function generateInsights(expenses: Expense[], budgets: Budget[]): Insigh
     }
   });
 
-  const weekendTotal = curr.filter(e => isWeekend(parseISO(e.date))).reduce((s, e) => s + e.amount, 0);
+  const weekendTotal = curr.filter(e => isWeekend(safeParseDate(e.date))).reduce((s, e) => s + e.amount, 0);
   if (currTotal > 0 && weekendTotal / currTotal > 0.4) {
     insights.push({
       id: 'weekend',
