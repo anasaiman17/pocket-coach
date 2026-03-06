@@ -142,7 +142,7 @@ export function calculateHealthScore(expenses: Expense[], budgets: Budget[]): { 
     else if (change > 0.2) { score -= 10; factors.push('Spending increased significantly'); }
   }
 
-  const wr = curr.filter(e => isWeekend(parseISO(e.date))).reduce((s, e) => s + e.amount, 0) / (currTotal || 1);
+  const wr = curr.filter(e => isWeekend(safeParseDate(e.date))).reduce((s, e) => s + e.amount, 0) / (currTotal || 1);
   if (wr > 0.45) { score -= 5; factors.push('Weekend overspending detected'); }
   if (factors.length === 0) factors.push('Looking good! Keep it up.');
 
