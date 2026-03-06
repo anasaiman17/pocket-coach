@@ -72,7 +72,7 @@ export default function Analytics() {
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis dataKey="month" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v}`} />
+              <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `₹${v}`} />
               <RTooltip formatter={(v: number) => formatCurrency(v)} contentStyle={tooltipStyle} />
               <Area type="monotone" dataKey="amount" stroke="hsl(var(--primary))" fill="url(#aGrad)" strokeWidth={2} />
             </AreaChart>
