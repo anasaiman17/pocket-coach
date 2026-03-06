@@ -235,7 +235,7 @@ export function calculateSpendingRisk(expenses: Expense[], budgets: Budget[]): S
 export function getMonthlyTotals(expenses: Expense[]): { month: string; amount: number }[] {
   const groups: Record<string, number> = {};
   expenses.forEach(e => {
-    const m = format(parseISO(e.date), 'MMM yy');
+    const m = format(safeParseDate(e.date), 'MMM yy');
     groups[m] = (groups[m] || 0) + e.amount;
   });
   return Object.entries(groups).map(([month, amount]) => ({ month, amount: Math.round(amount) }));
