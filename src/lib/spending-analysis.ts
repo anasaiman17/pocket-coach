@@ -1,6 +1,16 @@
 import { Expense, formatCurrency } from './types';
 import { parseISO, format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, isWeekend, startOfWeek, endOfWeek, subMonths, isSameMonth, getWeek, getYear } from 'date-fns';
 
+// Safely parse both 'yyyy-MM-dd' and full ISO strings without timezone shift
+function safeParseDate(dateStr: string): Date {
+  if (!dateStr) return new Date(NaN);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+  return parseISO(dateStr);
+}
+
 // ── Daily ──────────────────────────────────────────
 export interface DailyBreakdown {
   days: { date: string; label: string; amount: number; isToday: boolean; isWeekend: boolean }[];
@@ -17,10 +27,10 @@ export function getDailyBreakdown(expenses: Expense[]): DailyBreakdown {
   const monthEnd = endOfMonth(now);
   const allDays = eachDayOfInterval({ start: monthStart, end: now > monthEnd ? monthEnd : now });
 
-  const thisMonth = expenses.filter(e => isSameMonth(parseISO(e.date), now));
+  const thisMonth = expenses.filter(e => isSameMonth(safeParseDate(e.date), now));
   const dailyMap: Record<string, number> = {};
   thisMonth.forEach(e => {
-    const d = format(parseISO(e.date), 'yyyy-MM-dd');
+    const d = format(safeParseDate(e.date), 'yyyy-MM-dd');
     dailyMap[d] = (dailyMap[d] || 0) + e.amount;
   });
 
@@ -52,9 +62,9 @@ export function getDailyBreakdown(expenses: Expense[]): DailyBreakdown {
   const insights: string[] = [];
   const highestDay = [...days].sort((a, b) => b.amount - a.amount)[0];
   if (highestDay && highestDay.amount > 0) {
-    insights.push(`Highest spending day: ${format(parseISO(highestDay.date), 'MMM d')} at ${formatCurrency(highestDay.amount)}.`);
+    insights.push(`Highest spending day: ${format(safeParseDate(highestDay.date), 'MMM d')} at ${formatCurrency(highestDay.amount)}.`);
   }
-  const weekendSpend = thisMonth.filter(e => isWeekend(parseISO(e.date))).reduce((s, e) => s + e.amount, 0);
+  const weekendSpend = thisMonth.filter(e => isWeekend(safeParseDate(e.date))).reduce((s, e) => s + e.amount, 0);
   const weekdaySpend = totalThisMonth - weekendSpend;
   if (totalThisMonth > 0) {
     insights.push(`Weekday spending: ${formatCurrency(weekdaySpend)} (${Math.round(weekdaySpend / totalThisMonth * 100)}%) vs Weekend: ${formatCurrency(weekendSpend)} (${Math.round(weekendSpend / totalThisMonth * 100)}%).`);
@@ -82,12 +92,12 @@ export function getWeeklyBreakdown(expenses: Expense[]): WeeklyBreakdown {
   const now = new Date();
   // Get expenses from last 8 weeks
   const eightWeeksAgo = subMonths(now, 2);
-  const recent = expenses.filter(e => parseISO(e.date) >= eightWeeksAgo);
+  const recent = expenses.filter(e => safeParseDate(e.date) >= eightWeeksAgo);
 
   const weekMap: Record<string, { total: number; weekday: number; weekend: number; count: number }> = {};
 
   recent.forEach(e => {
-    const d = parseISO(e.date);
+    const d = safeParseDate(e.date);
     const weekStart = startOfWeek(d, { weekStartsOn: 1 });
     const key = format(weekStart, 'MMM d');
     if (!weekMap[key]) weekMap[key] = { total: 0, weekday: 0, weekend: 0, count: 0 };
@@ -151,15 +161,15 @@ export function getMonthlyBreakdown(expenses: Expense[]): MonthlyBreakdown {
   const now = new Date();
   const monthMap: Record<string, number> = {};
   expenses.forEach(e => {
-    const m = format(parseISO(e.date), 'MMM yy');
+    const m = format(safeParseDate(e.date), 'MMM yy');
     monthMap[m] = (monthMap[m] || 0) + e.amount;
   });
 
   const months = Object.entries(monthMap)
     .map(([label, total]) => ({ label, total: Math.round(total) }));
 
-  const thisMonthExps = expenses.filter(e => isSameMonth(parseISO(e.date), now));
-  const lastMonthExps = expenses.filter(e => isSameMonth(parseISO(e.date), subMonths(now, 1)));
+  const thisMonthExps = expenses.filter(e => isSameMonth(safeParseDate(e.date), now));
+  const lastMonthExps = expenses.filter(e => isSameMonth(safeParseDate(e.date), subMonths(now, 1)));
   const thisTotal = thisMonthExps.reduce((s, e) => s + e.amount, 0);
   const lastTotal = lastMonthExps.reduce((s, e) => s + e.amount, 0);
   const avgMonthlySpend = months.length > 0 ? months.reduce((s, m) => s + m.total, 0) / months.length : 0;

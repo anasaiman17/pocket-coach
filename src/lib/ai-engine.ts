@@ -1,13 +1,24 @@
 import { Expense, Budget, Insight, BadSpendingAlert, SpendingRisk, Category, CATEGORIES } from './types';
 import { format, parseISO, isWeekend, subMonths, isSameMonth, differenceInHours } from 'date-fns';
 
+// Safely parse both 'yyyy-MM-dd' and full ISO strings without timezone shift
+function safeParseDate(dateStr: string): Date {
+  if (!dateStr) return new Date(NaN);
+  // If it's just a date (yyyy-MM-dd or dd/MM/yyyy etc.), parse as local midnight
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+  return parseISO(dateStr);
+}
+
 function currentMonthExpenses(expenses: Expense[]): Expense[] {
   const now = new Date();
-  return expenses.filter(e => isSameMonth(parseISO(e.date), now));
+  return expenses.filter(e => isSameMonth(safeParseDate(e.date), now));
 }
 
 function previousMonthExpenses(expenses: Expense[]): Expense[] {
-  return expenses.filter(e => isSameMonth(parseISO(e.date), subMonths(new Date(), 1)));
+  return expenses.filter(e => isSameMonth(safeParseDate(e.date), subMonths(new Date(), 1)));
 }
 
 function categoryTotals(expenses: Expense[]): Record<string, number> {
@@ -60,7 +71,7 @@ export function generateInsights(expenses: Expense[], budgets: Budget[]): Insigh
     }
   });
 
-  const weekendTotal = curr.filter(e => isWeekend(parseISO(e.date))).reduce((s, e) => s + e.amount, 0);
+  const weekendTotal = curr.filter(e => isWeekend(safeParseDate(e.date))).reduce((s, e) => s + e.amount, 0);
   if (currTotal > 0 && weekendTotal / currTotal > 0.4) {
     insights.push({
       id: 'weekend',
@@ -131,7 +142,7 @@ export function calculateHealthScore(expenses: Expense[], budgets: Budget[]): { 
     else if (change > 0.2) { score -= 10; factors.push('Spending increased significantly'); }
   }
 
-  const wr = curr.filter(e => isWeekend(parseISO(e.date))).reduce((s, e) => s + e.amount, 0) / (currTotal || 1);
+  const wr = curr.filter(e => isWeekend(safeParseDate(e.date))).reduce((s, e) => s + e.amount, 0) / (currTotal || 1);
   if (wr > 0.45) { score -= 5; factors.push('Weekend overspending detected'); }
   if (factors.length === 0) factors.push('Looking good! Keep it up.');
 
@@ -154,7 +165,7 @@ export function detectBadSpending(expenses: Expense[], budgets: Budget[]): BadSp
     if (nonEssential.includes(cat) && exps.length >= 3) {
       let impulse = 0;
       for (let i = 1; i < exps.length; i++) {
-        if (Math.abs(differenceInHours(parseISO(exps[i].date), parseISO(exps[i - 1].date))) < 72) impulse++;
+        if (Math.abs(differenceInHours(safeParseDate(exps[i].date), safeParseDate(exps[i - 1].date))) < 72) impulse++;
       }
       if (impulse >= 2) {
         alerts.push({
@@ -224,7 +235,7 @@ export function calculateSpendingRisk(expenses: Expense[], budgets: Budget[]): S
 export function getMonthlyTotals(expenses: Expense[]): { month: string; amount: number }[] {
   const groups: Record<string, number> = {};
   expenses.forEach(e => {
-    const m = format(parseISO(e.date), 'MMM yy');
+    const m = format(safeParseDate(e.date), 'MMM yy');
     groups[m] = (groups[m] || 0) + e.amount;
   });
   return Object.entries(groups).map(([month, amount]) => ({ month, amount: Math.round(amount) }));

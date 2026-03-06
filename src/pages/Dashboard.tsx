@@ -6,6 +6,16 @@ import { useExpenses } from '@/lib/ExpenseContext';
 import { formatCurrency, CATEGORY_COLORS, CATEGORY_ICONS, Category } from '@/lib/types';
 import { getMonthlyTotals, getCategoryBreakdown } from '@/lib/ai-engine';
 import { format, parseISO, isSameMonth } from 'date-fns';
+
+// Safely parse both 'yyyy-MM-dd' and full ISO strings without timezone shift
+function safeParseDate(dateStr: string): Date {
+  if (!dateStr) return new Date(NaN);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+  return parseISO(dateStr);
+}
 import { Link } from 'react-router-dom';
 
 export default function Dashboard() {
@@ -13,7 +23,7 @@ export default function Dashboard() {
 
   const currentMonth = useMemo(() => {
     const now = new Date();
-    return expenses.filter(e => isSameMonth(parseISO(e.date), now));
+    return expenses.filter(e => isSameMonth(safeParseDate(e.date), now));
   }, [expenses]);
 
   const monthTotal = useMemo(() => currentMonth.reduce((s, e) => s + e.amount, 0), [currentMonth]);
@@ -130,7 +140,7 @@ export default function Dashboard() {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="month" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v}`} />
+                <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `₹${v}`} />
                 <RTooltip formatter={(v: number) => formatCurrency(v)} contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }} />
                 <Area type="monotone" dataKey="amount" stroke="hsl(var(--primary))" fill="url(#trendGrad)" strokeWidth={2} />
               </AreaChart>
@@ -179,7 +189,7 @@ export default function Dashboard() {
                 <span className="text-lg">{CATEGORY_ICONS[e.category as Category]}</span>
                 <div>
                   <p className="text-sm font-medium">{e.category}</p>
-                  <p className="text-xs text-muted-foreground">{format(parseISO(e.date), 'MMM d, yyyy')}</p>
+                  <p className="text-xs text-muted-foreground">{format(safeParseDate(e.date), 'MMM d, yyyy')}</p>
                 </div>
               </div>
               <span className="text-sm font-semibold">{formatCurrency(e.amount)}</span>

@@ -64,11 +64,12 @@ export function initializeSampleData() {
         if (category === 'Shopping') amount *= shoppingInflation;
         amount = Math.round(amount * 100) / 100;
 
+        const d = new Date(monthDate.getFullYear(), monthDate.getMonth(), day);
         expenses.push({
           id: crypto.randomUUID(),
           amount,
           category,
-          date: new Date(monthDate.getFullYear(), monthDate.getMonth(), day).toISOString(),
+          date: format(d, 'yyyy-MM-dd'),
           paymentMode: paymentModes[(i + monthOffset) % paymentModes.length],
           notes: '',
           createdAt: new Date().toISOString(),

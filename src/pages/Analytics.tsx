@@ -6,6 +6,16 @@ import { formatCurrency, CATEGORY_COLORS, Category } from '@/lib/types';
 import { getMonthlyTotals, getCategoryBreakdown } from '@/lib/ai-engine';
 import { parseISO, isSameMonth, isWeekend, format } from 'date-fns';
 
+// Safely parse both 'yyyy-MM-dd' and full ISO strings without timezone shift
+function safeParseDate(dateStr: string): Date {
+  if (!dateStr) return new Date(NaN);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+  return parseISO(dateStr);
+}
+
 const tooltipStyle = { background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' };
 
 export default function Analytics() {
@@ -13,7 +23,7 @@ export default function Analytics() {
 
   const currentMonth = useMemo(() => {
     const now = new Date();
-    return expenses.filter(e => isSameMonth(parseISO(e.date), now));
+    return expenses.filter(e => isSameMonth(safeParseDate(e.date), now));
   }, [expenses]);
 
   const categoryData = useMemo(() => getCategoryBreakdown(currentMonth), [currentMonth]);
@@ -33,7 +43,7 @@ export default function Analytics() {
   const dayOfWeek = useMemo(() => {
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const totals = Array(7).fill(0);
-    currentMonth.forEach(e => { totals[parseISO(e.date).getDay()] += e.amount; });
+    currentMonth.forEach(e => { totals[safeParseDate(e.date).getDay()] += e.amount; });
     return days.map((day, i) => ({ day, amount: Math.round(totals[i]) }));
   }, [currentMonth]);
 
@@ -72,7 +82,7 @@ export default function Analytics() {
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis dataKey="month" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v}`} />
+              <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `₹${v}`} />
               <RTooltip formatter={(v: number) => formatCurrency(v)} contentStyle={tooltipStyle} />
               <Area type="monotone" dataKey="amount" stroke="hsl(var(--primary))" fill="url(#aGrad)" strokeWidth={2} />
             </AreaChart>
@@ -86,7 +96,7 @@ export default function Analytics() {
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={budgetVsActual} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis type="number" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v}`} />
+                <XAxis type="number" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `₹${v}`} />
                 <YAxis type="category" dataKey="category" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} width={90} />
                 <RTooltip formatter={(v: number) => formatCurrency(v)} contentStyle={tooltipStyle} />
                 <Bar dataKey="budget" fill="hsl(var(--muted))" radius={[0, 4, 4, 0]} barSize={12} name="Budget" />
@@ -106,7 +116,7 @@ export default function Analytics() {
             <BarChart data={dayOfWeek}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis dataKey="day" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v}`} />
+              <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `₹${v}`} />
               <RTooltip formatter={(v: number) => formatCurrency(v)} contentStyle={tooltipStyle} />
               <Bar dataKey="amount" radius={[4, 4, 0, 0]} barSize={32}>
                 {dayOfWeek.map((d, i) => (
