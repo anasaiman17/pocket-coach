@@ -1,6 +1,16 @@
 import { Expense, formatCurrency } from './types';
 import { parseISO, format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, isWeekend, startOfWeek, endOfWeek, subMonths, isSameMonth, getWeek, getYear } from 'date-fns';
 
+// Safely parse both 'yyyy-MM-dd' and full ISO strings without timezone shift
+function safeParseDate(dateStr: string): Date {
+  if (!dateStr) return new Date(NaN);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+  return parseISO(dateStr);
+}
+
 // ── Daily ──────────────────────────────────────────
 export interface DailyBreakdown {
   days: { date: string; label: string; amount: number; isToday: boolean; isWeekend: boolean }[];
