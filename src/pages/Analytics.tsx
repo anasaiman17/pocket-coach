@@ -106,7 +106,7 @@ export default function Analytics() {
             <BarChart data={dayOfWeek}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis dataKey="day" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v}`} />
+              <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `₹${v}`} />
               <RTooltip formatter={(v: number) => formatCurrency(v)} contentStyle={tooltipStyle} />
               <Bar dataKey="amount" radius={[4, 4, 0, 0]} barSize={32}>
                 {dayOfWeek.map((d, i) => (
