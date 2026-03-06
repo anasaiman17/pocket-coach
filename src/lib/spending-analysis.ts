@@ -27,10 +27,10 @@ export function getDailyBreakdown(expenses: Expense[]): DailyBreakdown {
   const monthEnd = endOfMonth(now);
   const allDays = eachDayOfInterval({ start: monthStart, end: now > monthEnd ? monthEnd : now });
 
-  const thisMonth = expenses.filter(e => isSameMonth(parseISO(e.date), now));
+  const thisMonth = expenses.filter(e => isSameMonth(safeParseDate(e.date), now));
   const dailyMap: Record<string, number> = {};
   thisMonth.forEach(e => {
-    const d = format(parseISO(e.date), 'yyyy-MM-dd');
+    const d = format(safeParseDate(e.date), 'yyyy-MM-dd');
     dailyMap[d] = (dailyMap[d] || 0) + e.amount;
   });
 
