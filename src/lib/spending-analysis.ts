@@ -92,12 +92,12 @@ export function getWeeklyBreakdown(expenses: Expense[]): WeeklyBreakdown {
   const now = new Date();
   // Get expenses from last 8 weeks
   const eightWeeksAgo = subMonths(now, 2);
-  const recent = expenses.filter(e => parseISO(e.date) >= eightWeeksAgo);
+  const recent = expenses.filter(e => safeParseDate(e.date) >= eightWeeksAgo);
 
   const weekMap: Record<string, { total: number; weekday: number; weekend: number; count: number }> = {};
 
   recent.forEach(e => {
-    const d = parseISO(e.date);
+    const d = safeParseDate(e.date);
     const weekStart = startOfWeek(d, { weekStartsOn: 1 });
     const key = format(weekStart, 'MMM d');
     if (!weekMap[key]) weekMap[key] = { total: 0, weekday: 0, weekend: 0, count: 0 };
