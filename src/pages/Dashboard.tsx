@@ -189,7 +189,7 @@ export default function Dashboard() {
                 <span className="text-lg">{CATEGORY_ICONS[e.category as Category]}</span>
                 <div>
                   <p className="text-sm font-medium">{e.category}</p>
-                  <p className="text-xs text-muted-foreground">{format(parseISO(e.date), 'MMM d, yyyy')}</p>
+                  <p className="text-xs text-muted-foreground">{format(safeParseDate(e.date), 'MMM d, yyyy')}</p>
                 </div>
               </div>
               <span className="text-sm font-semibold">{formatCurrency(e.amount)}</span>
