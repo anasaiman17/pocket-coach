@@ -94,7 +94,7 @@ function parseCSV(text: string): { headers: string[]; rows: string[][] } {
 }
 
 function autoMap(headers: string[]): Partial<ColumnMap> {
-  const h = headers.map(h => h.toLowerCase());
+  const h = headers.map(h => h.toLowerCase().trim());
   const find = (...keys: string[]) => {
     for (const k of keys) {
       const i = h.findIndex(hh => hh.includes(k));
@@ -103,11 +103,11 @@ function autoMap(headers: string[]): Partial<ColumnMap> {
     return undefined;
   };
   return {
-    date: find('date', 'time', 'txn date', 'transaction date'),
-    amount: find('amount', 'debit', 'credit', 'sum', 'value', 'inr', 'rs'),
-    category: find('category', 'cat', 'type', 'description', 'desc', 'narration', 'particulars', 'remarks'),
-    paymentMode: find('payment', 'mode', 'method', 'channel'),
-    notes: find('note', 'description', 'narration', 'remark', 'memo', 'detail'),
+    date: find('date', 'txn date', 'transaction date', 'value date', 'posting date', 'time'),
+    amount: find('debit', 'withdrawal', 'amount', 'dr', 'credit', 'sum', 'inr', 'rs', 'value'),
+    category: find('narration', 'description', 'particulars', 'remarks', 'category', 'cat', 'type', 'desc', 'detail'),
+    paymentMode: find('payment', 'mode', 'method', 'channel', 'instrument'),
+    notes: find('note', 'narration', 'description', 'remark', 'memo', 'detail', 'ref'),
   };
 }
 
