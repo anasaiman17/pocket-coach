@@ -1,9 +1,20 @@
 import { Expense, Budget, Insight, BadSpendingAlert, SpendingRisk, Category, CATEGORIES } from './types';
 import { format, parseISO, isWeekend, subMonths, isSameMonth, differenceInHours } from 'date-fns';
 
+// Safely parse both 'yyyy-MM-dd' and full ISO strings without timezone shift
+function safeParseDate(dateStr: string): Date {
+  if (!dateStr) return new Date(NaN);
+  // If it's just a date (yyyy-MM-dd or dd/MM/yyyy etc.), parse as local midnight
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+  return parseISO(dateStr);
+}
+
 function currentMonthExpenses(expenses: Expense[]): Expense[] {
   const now = new Date();
-  return expenses.filter(e => isSameMonth(parseISO(e.date), now));
+  return expenses.filter(e => isSameMonth(safeParseDate(e.date), now));
 }
 
 function previousMonthExpenses(expenses: Expense[]): Expense[] {
