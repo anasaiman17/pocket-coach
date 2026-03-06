@@ -43,7 +43,7 @@ export default function Analytics() {
   const dayOfWeek = useMemo(() => {
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const totals = Array(7).fill(0);
-    currentMonth.forEach(e => { totals[parseISO(e.date).getDay()] += e.amount; });
+    currentMonth.forEach(e => { totals[safeParseDate(e.date).getDay()] += e.amount; });
     return days.map((day, i) => ({ day, amount: Math.round(totals[i]) }));
   }, [currentMonth]);
 
