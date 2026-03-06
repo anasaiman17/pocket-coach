@@ -18,7 +18,7 @@ function currentMonthExpenses(expenses: Expense[]): Expense[] {
 }
 
 function previousMonthExpenses(expenses: Expense[]): Expense[] {
-  return expenses.filter(e => isSameMonth(parseISO(e.date), subMonths(new Date(), 1)));
+  return expenses.filter(e => isSameMonth(safeParseDate(e.date), subMonths(new Date(), 1)));
 }
 
 function categoryTotals(expenses: Expense[]): Record<string, number> {
