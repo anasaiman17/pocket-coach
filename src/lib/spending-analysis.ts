@@ -62,9 +62,9 @@ export function getDailyBreakdown(expenses: Expense[]): DailyBreakdown {
   const insights: string[] = [];
   const highestDay = [...days].sort((a, b) => b.amount - a.amount)[0];
   if (highestDay && highestDay.amount > 0) {
-    insights.push(`Highest spending day: ${format(parseISO(highestDay.date), 'MMM d')} at ${formatCurrency(highestDay.amount)}.`);
+    insights.push(`Highest spending day: ${format(safeParseDate(highestDay.date), 'MMM d')} at ${formatCurrency(highestDay.amount)}.`);
   }
-  const weekendSpend = thisMonth.filter(e => isWeekend(parseISO(e.date))).reduce((s, e) => s + e.amount, 0);
+  const weekendSpend = thisMonth.filter(e => isWeekend(safeParseDate(e.date))).reduce((s, e) => s + e.amount, 0);
   const weekdaySpend = totalThisMonth - weekendSpend;
   if (totalThisMonth > 0) {
     insights.push(`Weekday spending: ${formatCurrency(weekdaySpend)} (${Math.round(weekdaySpend / totalThisMonth * 100)}%) vs Weekend: ${formatCurrency(weekendSpend)} (${Math.round(weekendSpend / totalThisMonth * 100)}%).`);
