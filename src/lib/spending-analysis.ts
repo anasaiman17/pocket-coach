@@ -161,15 +161,15 @@ export function getMonthlyBreakdown(expenses: Expense[]): MonthlyBreakdown {
   const now = new Date();
   const monthMap: Record<string, number> = {};
   expenses.forEach(e => {
-    const m = format(parseISO(e.date), 'MMM yy');
+    const m = format(safeParseDate(e.date), 'MMM yy');
     monthMap[m] = (monthMap[m] || 0) + e.amount;
   });
 
   const months = Object.entries(monthMap)
     .map(([label, total]) => ({ label, total: Math.round(total) }));
 
-  const thisMonthExps = expenses.filter(e => isSameMonth(parseISO(e.date), now));
-  const lastMonthExps = expenses.filter(e => isSameMonth(parseISO(e.date), subMonths(now, 1)));
+  const thisMonthExps = expenses.filter(e => isSameMonth(safeParseDate(e.date), now));
+  const lastMonthExps = expenses.filter(e => isSameMonth(safeParseDate(e.date), subMonths(now, 1)));
   const thisTotal = thisMonthExps.reduce((s, e) => s + e.amount, 0);
   const lastTotal = lastMonthExps.reduce((s, e) => s + e.amount, 0);
   const avgMonthlySpend = months.length > 0 ? months.reduce((s, m) => s + m.total, 0) / months.length : 0;
