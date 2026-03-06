@@ -160,12 +160,15 @@ export default function CsvImportModal({ open, onOpenChange }: Props) {
     const errs: string[] = [];
     let count = 0;
     for (const row of rows) {
+      // skip completely empty rows
+      if (row.every(cell => !cell.trim())) continue;
       const get = (col?: string) => (col && col !== NONE) ? (row[headers.indexOf(col)] ?? '') : '';
       const rawDate = get(colMap.date);
       const rawAmount = get(colMap.amount);
       const date = tryParseDate(rawDate);
-      const amount = parseFloat(rawAmount.replace(/[^0-9.-]/g, ''));
-      if (!date || isNaN(amount) || amount <= 0) { errs.push(`Skipped row: invalid date "${rawDate}" or amount "${rawAmount}"`); continue; }
+      // strip currency symbols, spaces, commas; take absolute value so debits with "-" sign still import
+      const amount = Math.abs(parseFloat(rawAmount.replace(/[^0-9.-]/g, '')));
+      if (!date || isNaN(amount) || amount === 0) { errs.push(`Skipped row: invalid date "${rawDate}" or amount "${rawAmount}"`); continue; }
       const rawCat = get(colMap.category);
       const rawPay = get(colMap.paymentMode);
       const notes = get(colMap.notes);
