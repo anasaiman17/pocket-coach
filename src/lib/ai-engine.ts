@@ -165,7 +165,7 @@ export function detectBadSpending(expenses: Expense[], budgets: Budget[]): BadSp
     if (nonEssential.includes(cat) && exps.length >= 3) {
       let impulse = 0;
       for (let i = 1; i < exps.length; i++) {
-        if (Math.abs(differenceInHours(parseISO(exps[i].date), parseISO(exps[i - 1].date))) < 72) impulse++;
+        if (Math.abs(differenceInHours(safeParseDate(exps[i].date), safeParseDate(exps[i - 1].date))) < 72) impulse++;
       }
       if (impulse >= 2) {
         alerts.push({
