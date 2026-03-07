@@ -41,7 +41,7 @@ function StatCard({ title, value, subtitle, icon: Icon, trend }: {
         <p className="text-lg font-bold mt-0.5">{value}</p>
         <div className="flex items-center gap-1 mt-1">
           {trend === 'up' && <TrendingUp size={12} className="text-destructive" />}
-          {trend === 'down' && <TrendingDown size={12} className="text-emerald-500" />}
+          {trend === 'down' && <TrendingDown size={12} className="text-primary" />}
           <p className="text-xs text-muted-foreground truncate">{subtitle}</p>
         </div>
       </div>
