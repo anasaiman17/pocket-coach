@@ -4,10 +4,28 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip, Respon
 import { useExpenses } from '@/lib/ExpenseContext';
 import { formatCurrency, CATEGORY_COLORS, Category } from '@/lib/types';
 import { getDailyBreakdown, getWeeklyBreakdown, getMonthlyBreakdown } from '@/lib/spending-analysis';
-import { CalendarDays, CalendarRange, Calendar, TrendingUp, TrendingDown, ArrowRight } from 'lucide-react';
+import { CalendarDays, CalendarRange, Calendar, TrendingUp, TrendingDown, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { parseISO, format, isSameMonth, addMonths, subMonths } from 'date-fns';
 
 const tooltipStyle = { background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' };
+
+function safeParseDate(dateStr: string): Date {
+  if (!dateStr) return new Date(NaN);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+  return parseISO(dateStr);
+}
+
+function getMostRecentMonth(expenses: { date: string }[]): Date {
+  if (!expenses.length) return new Date();
+  const sorted = [...expenses].sort((a, b) =>
+    safeParseDate(b.date).getTime() - safeParseDate(a.date).getTime()
+  );
+  return safeParseDate(sorted[0].date);
+}
 
 function StatCard({ title, value, subtitle, icon: Icon, trend }: {
   title: string; value: string; subtitle: string;
@@ -35,18 +53,43 @@ export default function SpendingAnalysis() {
   const { expenses } = useExpenses();
   const [activeTab, setActiveTab] = useState('daily');
 
-  const daily = useMemo(() => getDailyBreakdown(expenses), [expenses]);
-  const weekly = useMemo(() => getWeeklyBreakdown(expenses), [expenses]);
-  const monthly = useMemo(() => getMonthlyBreakdown(expenses), [expenses]);
+  const defaultMonth = useMemo(() => getMostRecentMonth(expenses), [expenses]);
+  const [selectedMonth, setSelectedMonth] = useState<Date | null>(null);
+  const activeMonth = selectedMonth ?? defaultMonth;
+
+  const daily = useMemo(() => getDailyBreakdown(expenses, activeMonth), [expenses, activeMonth]);
+  const weekly = useMemo(() => getWeeklyBreakdown(expenses, activeMonth), [expenses, activeMonth]);
+  const monthly = useMemo(() => getMonthlyBreakdown(expenses, activeMonth), [expenses, activeMonth]);
 
   const dailyAvg = daily.days.length > 0 ? daily.totalThisMonth / Math.max(daily.days.length, 1) : 0;
   const weeklyAvg = weekly.weeks.length > 0 ? weekly.weeks.reduce((s, w) => s + w.total, 0) / weekly.weeks.length : 0;
 
+  const prevMonth = () => setSelectedMonth(subMonths(activeMonth, 1));
+  const nextMonth = () => {
+    const next = addMonths(activeMonth, 1);
+    if (next <= new Date()) setSelectedMonth(next);
+  };
+  const isCurrentMonth = isSameMonth(activeMonth, new Date());
+
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Spending Analysis</h1>
-        <p className="text-sm text-muted-foreground">Daily, weekly & monthly breakdown of your spending</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">Spending Analysis</h1>
+          <p className="text-sm text-muted-foreground">Daily, weekly & monthly breakdown of your spending</p>
+        </div>
+        {/* Month Picker */}
+        <div className="flex items-center gap-1 glass-card px-2 py-1 rounded-lg self-start sm:self-auto">
+          <button onClick={prevMonth} className="p-1 rounded hover:bg-muted transition-colors">
+            <ChevronLeft size={16} className="text-muted-foreground" />
+          </button>
+          <span className="text-sm font-medium px-2 min-w-[110px] text-center">
+            {format(activeMonth, 'MMMM yyyy')}
+          </span>
+          <button onClick={nextMonth} disabled={isCurrentMonth} className="p-1 rounded hover:bg-muted transition-colors disabled:opacity-30">
+            <ChevronRight size={16} className="text-muted-foreground" />
+          </button>
+        </div>
       </div>
 
       {/* Summary Stats */}
