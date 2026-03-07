@@ -23,22 +23,40 @@ type ColumnMap = {
 
 const NONE = '__none__';
 
+// Try DD/MM/YYYY and DD-MM-YYYY explicitly before ambiguous formats
 const DATE_FORMATS = [
-  'yyyy-MM-dd', 'dd/MM/yyyy', 'MM/dd/yyyy', 'dd-MM-yyyy',
-  'MM-dd-yyyy', 'dd MMM yyyy', 'MMM dd yyyy', 'd/M/yyyy',
+  'yyyy-MM-dd',
+  'dd/MM/yyyy', 'd/M/yyyy', 'dd/MM/yy', 'd/M/yy',
+  'dd-MM-yyyy', 'd-M-yyyy', 'dd-MM-yy',
+  'dd MMM yyyy', 'dd MMM yy', 'MMM dd yyyy', 'MMM d yyyy',
+  'dd MMM, yyyy', 'd MMM yyyy',
+  'MM/dd/yyyy', 'MM-dd-yyyy',
 ];
 
 function tryParseDate(raw: string): string | null {
-  const trimmed = raw.trim();
+  // Strip time portion (e.g. "01/03/2026, 10:30 AM" → "01/03/2026")
+  const trimmed = raw.trim().replace(/[,\s]+\d{1,2}:\d{2}.*$/, '').trim();
   for (const fmt of DATE_FORMATS) {
     try {
       const d = parse(trimmed, fmt, new Date());
-      if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+      // Validate year is plausible (between 2000 and 2100)
+      if (!isNaN(d.getTime()) && d.getFullYear() >= 2000 && d.getFullYear() <= 2100) {
+        // Return as local date string to avoid UTC timezone shift
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+      }
     } catch {}
   }
-  // fallback: native Date parse
+  // Fallback: native Date — use local date parts to avoid UTC shift
   const d = new Date(trimmed);
-  if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+  if (!isNaN(d.getTime()) && d.getFullYear() >= 2000) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
   return null;
 }
 
