@@ -202,7 +202,19 @@ export default function CsvImportModal({ open, onOpenChange }: Props) {
         notes: notes || rawCat || '',
       });
     }
-    if (toImport.length > 0) addExpensesBulk(toImport);
+    // Debug: log first few parsed entries to verify dates
+    console.log('[CSV Import] Parsed entries sample:', toImport.slice(0, 3));
+    console.log('[CSV Import] Skipped rows:', errs);
+    if (toImport.length > 0) {
+      addExpensesBulk(toImport);
+      toast.success(`Imported ${toImport.length} transactions`, {
+        description: `First entry: ${toImport[0].date} — ₹${toImport[0].amount}`,
+      });
+    } else {
+      toast.error('No valid transactions found', {
+        description: errs[0] || 'Check date and amount columns are mapped correctly.',
+      });
+    }
     setImportCount(toImport.length);
     setErrors(errs.slice(0, 5));
     setStep('done');
