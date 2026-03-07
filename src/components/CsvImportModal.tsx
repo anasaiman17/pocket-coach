@@ -1,12 +1,13 @@
 import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, FileText, X, CheckCircle2, AlertCircle, ChevronDown } from 'lucide-react';
+import { Upload, X, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useExpenses } from '@/lib/ExpenseContext';
 import { CATEGORIES, PAYMENT_MODES, Category, PaymentMode } from '@/lib/types';
 import { parse } from 'date-fns';
+import { toast } from 'sonner';
 
 interface Props {
   open: boolean;
@@ -138,7 +139,7 @@ const FIELD_LABELS: Record<keyof ColumnMap, string> = {
 };
 
 export default function CsvImportModal({ open, onOpenChange }: Props) {
-  const { addExpense } = useExpenses();
+  const { addExpensesBulk } = useExpenses();
   const fileRef = useRef<HTMLInputElement>(null);
   const [step, setStep] = useState<'upload' | 'map' | 'done'>('upload');
   const [headers, setHeaders] = useState<string[]>([]);
@@ -176,7 +177,7 @@ export default function CsvImportModal({ open, onOpenChange }: Props) {
 
   const handleImport = () => {
     const errs: string[] = [];
-    let count = 0;
+    const toImport: Omit<import('@/lib/types').Expense, 'id' | 'createdAt'>[] = [];
     for (const row of rows) {
       // skip completely empty rows
       if (row.every(cell => !cell.trim())) continue;
@@ -186,20 +187,35 @@ export default function CsvImportModal({ open, onOpenChange }: Props) {
       const date = tryParseDate(rawDate);
       // strip currency symbols, spaces, commas; take absolute value so debits with "-" sign still import
       const amount = Math.abs(parseFloat(rawAmount.replace(/[^0-9.-]/g, '')));
-      if (!date || isNaN(amount) || amount === 0) { errs.push(`Skipped row: invalid date "${rawDate}" or amount "${rawAmount}"`); continue; }
+      if (!date || isNaN(amount) || amount === 0) {
+        errs.push(`Skipped row: invalid date "${rawDate}" or amount "${rawAmount}"`);
+        continue;
+      }
       const rawCat = get(colMap.category);
       const rawPay = get(colMap.paymentMode);
       const notes = get(colMap.notes);
-      addExpense({
+      toImport.push({
         amount,
         category: guessCategory(rawCat),
         date,
         paymentMode: guessPaymentMode(rawPay),
         notes: notes || rawCat || '',
       });
-      count++;
     }
-    setImportCount(count);
+    // Debug: log first few parsed entries to verify dates
+    console.log('[CSV Import] Parsed entries sample:', toImport.slice(0, 3));
+    console.log('[CSV Import] Skipped rows:', errs);
+    if (toImport.length > 0) {
+      addExpensesBulk(toImport);
+      toast.success(`Imported ${toImport.length} transactions`, {
+        description: `First entry: ${toImport[0].date} — ₹${toImport[0].amount}`,
+      });
+    } else {
+      toast.error('No valid transactions found', {
+        description: errs[0] || 'Check date and amount columns are mapped correctly.',
+      });
+    }
+    setImportCount(toImport.length);
     setErrors(errs.slice(0, 5));
     setStep('done');
   };
