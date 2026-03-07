@@ -176,7 +176,7 @@ export function ExpenseProvider({ children }: { children: ReactNode }) {
     <Ctx.Provider value={{
       expenses, budgets, badSpendingMode, insights, healthScore, badSpendingAlerts, spendingRisk,
       isLoading,
-      addExpense, updateExpense, deleteExpense, setBudget,
+      addExpense, addExpensesBulk, updateExpense, deleteExpense, setBudget,
       toggleBadSpendingMode: () => setBadSpendingMode(p => !p),
       exportData, importData, theme,
       toggleTheme: () => setTheme(p => (p === 'dark' ? 'light' : 'dark')),
