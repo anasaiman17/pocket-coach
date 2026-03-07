@@ -1,12 +1,12 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { PieChart, Pie, Cell, ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip, BarChart, Bar, Legend } from 'recharts';
 import { useExpenses } from '@/lib/ExpenseContext';
 import { formatCurrency, CATEGORY_COLORS, Category } from '@/lib/types';
 import { getMonthlyTotals, getCategoryBreakdown } from '@/lib/ai-engine';
-import { parseISO, isSameMonth, isWeekend, format } from 'date-fns';
+import { parseISO, isSameMonth, format, addMonths, subMonths } from 'date-fns';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-// Safely parse both 'yyyy-MM-dd' and full ISO strings without timezone shift
 function safeParseDate(dateStr: string): Date {
   if (!dateStr) return new Date(NaN);
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
@@ -16,19 +16,31 @@ function safeParseDate(dateStr: string): Date {
   return parseISO(dateStr);
 }
 
+function getMostRecentMonth(expenses: { date: string }[]): Date {
+  if (!expenses.length) return new Date();
+  const sorted = [...expenses].sort((a, b) =>
+    safeParseDate(b.date).getTime() - safeParseDate(a.date).getTime()
+  );
+  return safeParseDate(sorted[0].date);
+}
+
 const tooltipStyle = { background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' };
 
 export default function Analytics() {
   const { expenses, budgets } = useExpenses();
 
-  const currentMonth = useMemo(() => {
-    const now = new Date();
-    return expenses.filter(e => isSameMonth(safeParseDate(e.date), now));
-  }, [expenses]);
+  const defaultMonth = useMemo(() => getMostRecentMonth(expenses), [expenses]);
+  const [selectedMonth, setSelectedMonth] = useState<Date | null>(null);
+  const activeMonth = selectedMonth ?? defaultMonth;
+
+  const currentMonth = useMemo(
+    () => expenses.filter(e => isSameMonth(safeParseDate(e.date), activeMonth)),
+    [expenses, activeMonth]
+  );
 
   const categoryData = useMemo(() => getCategoryBreakdown(currentMonth), [currentMonth]);
   const trendData = useMemo(() => getMonthlyTotals(expenses), [expenses]);
-  const month = format(new Date(), 'yyyy-MM');
+  const month = format(activeMonth, 'yyyy-MM');
 
   const budgetVsActual = useMemo(() => {
     const totals = currentMonth.reduce((acc, e) => {
@@ -47,26 +59,51 @@ export default function Analytics() {
     return days.map((day, i) => ({ day, amount: Math.round(totals[i]) }));
   }, [currentMonth]);
 
+  const prevMonth = () => setSelectedMonth(subMonths(activeMonth, 1));
+  const nextMonth = () => {
+    const next = addMonths(activeMonth, 1);
+    if (next <= new Date()) setSelectedMonth(next);
+  };
+  const isCurrentMonth = isSameMonth(activeMonth, new Date());
+
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Analytics</h1>
-        <p className="text-sm text-muted-foreground">Visual breakdown of your spending</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">Analytics</h1>
+          <p className="text-sm text-muted-foreground">Visual breakdown of your spending</p>
+        </div>
+        {/* Month Picker */}
+        <div className="flex items-center gap-1 glass-card px-2 py-1 rounded-lg self-start sm:self-auto">
+          <button onClick={prevMonth} className="p-1 rounded hover:bg-muted transition-colors">
+            <ChevronLeft size={16} className="text-muted-foreground" />
+          </button>
+          <span className="text-sm font-medium px-2 min-w-[110px] text-center">
+            {format(activeMonth, 'MMMM yyyy')}
+          </span>
+          <button onClick={nextMonth} disabled={isCurrentMonth} className="p-1 rounded hover:bg-muted transition-colors disabled:opacity-30">
+            <ChevronRight size={16} className="text-muted-foreground" />
+          </button>
+        </div>
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
         {/* Category Breakdown */}
         <div className="glass-card p-5">
           <h3 className="text-sm font-semibold mb-4">Category Breakdown</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <PieChart>
-              <Pie data={categoryData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={55} outerRadius={90} paddingAngle={2}>
-                {categoryData.map(e => <Cell key={e.name} fill={CATEGORY_COLORS[e.name as Category] || '#6B7280'} />)}
-              </Pie>
-              <RTooltip formatter={(v: number) => formatCurrency(v)} contentStyle={tooltipStyle} />
-              <Legend formatter={(v: string) => <span className="text-xs text-muted-foreground">{v}</span>} />
-            </PieChart>
-          </ResponsiveContainer>
+          {categoryData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <PieChart>
+                <Pie data={categoryData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={55} outerRadius={90} paddingAngle={2}>
+                  {categoryData.map(e => <Cell key={e.name} fill={CATEGORY_COLORS[e.name as Category] || '#6B7280'} />)}
+                </Pie>
+                <RTooltip formatter={(v: number) => formatCurrency(v)} contentStyle={tooltipStyle} />
+                <Legend formatter={(v: string) => <span className="text-xs text-muted-foreground">{v}</span>} />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-16">No data for {format(activeMonth, 'MMMM yyyy')}</p>
+          )}
         </div>
 
         {/* Monthly Trend */}
@@ -82,7 +119,7 @@ export default function Analytics() {
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis dataKey="month" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `₹${v}`} />
+              <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `₹${(v/1000).toFixed(0)}k`} />
               <RTooltip formatter={(v: number) => formatCurrency(v)} contentStyle={tooltipStyle} />
               <Area type="monotone" dataKey="amount" stroke="hsl(var(--primary))" fill="url(#aGrad)" strokeWidth={2} />
             </AreaChart>
