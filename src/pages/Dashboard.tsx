@@ -1,13 +1,13 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { DollarSign, Activity, Target, AlertTriangle, TrendingUp, TrendingDown } from 'lucide-react';
+import { DollarSign, Activity, Target, AlertTriangle, TrendingUp, TrendingDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip } from 'recharts';
 import { useExpenses } from '@/lib/ExpenseContext';
 import { formatCurrency, CATEGORY_COLORS, CATEGORY_ICONS, Category } from '@/lib/types';
 import { getMonthlyTotals, getCategoryBreakdown } from '@/lib/ai-engine';
-import { format, parseISO, isSameMonth } from 'date-fns';
+import { format, parseISO, isSameMonth, addMonths, subMonths } from 'date-fns';
+import { Link } from 'react-router-dom';
 
-// Safely parse both 'yyyy-MM-dd' and full ISO strings without timezone shift
 function safeParseDate(dateStr: string): Date {
   if (!dateStr) return new Date(NaN);
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
@@ -16,21 +16,33 @@ function safeParseDate(dateStr: string): Date {
   }
   return parseISO(dateStr);
 }
-import { Link } from 'react-router-dom';
+
+/** Returns the most recent month that has at least one expense, or today if none. */
+function getMostRecentMonth(expenses: { date: string }[]): Date {
+  if (!expenses.length) return new Date();
+  const sorted = [...expenses].sort((a, b) =>
+    safeParseDate(b.date).getTime() - safeParseDate(a.date).getTime()
+  );
+  return safeParseDate(sorted[0].date);
+}
 
 export default function Dashboard() {
   const { expenses, healthScore, spendingRisk, insights, badSpendingAlerts, badSpendingMode } = useExpenses();
 
-  const currentMonth = useMemo(() => {
-    const now = new Date();
-    return expenses.filter(e => isSameMonth(safeParseDate(e.date), now));
-  }, [expenses]);
+  const defaultMonth = useMemo(() => getMostRecentMonth(expenses), [expenses]);
+  const [selectedMonth, setSelectedMonth] = useState<Date | null>(null);
+  const activeMonth = selectedMonth ?? defaultMonth;
+
+  const currentMonth = useMemo(
+    () => expenses.filter(e => isSameMonth(safeParseDate(e.date), activeMonth)),
+    [expenses, activeMonth]
+  );
 
   const monthTotal = useMemo(() => currentMonth.reduce((s, e) => s + e.amount, 0), [currentMonth]);
   const categoryData = useMemo(() => getCategoryBreakdown(currentMonth), [currentMonth]);
   const trendData = useMemo(() => getMonthlyTotals(expenses), [expenses]);
   const recentExpenses = useMemo(
-    () => [...expenses].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5),
+    () => [...expenses].sort((a, b) => safeParseDate(b.date).getTime() - safeParseDate(a.date).getTime()).slice(0, 5),
     [expenses]
   );
 
@@ -38,11 +50,32 @@ export default function Dashboard() {
   const riskColor = spendingRisk.level === 'Low' ? 'text-primary' : spendingRisk.level === 'Medium' ? 'text-accent' : 'text-destructive';
   const circumference = 2 * Math.PI * 38;
 
+  const prevMonth = () => setSelectedMonth(subMonths(activeMonth, 1));
+  const nextMonth = () => {
+    const next = addMonths(activeMonth, 1);
+    if (next <= new Date()) setSelectedMonth(next);
+  };
+  const isCurrentMonth = isSameMonth(activeMonth, new Date());
+
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">{format(new Date(), 'MMMM yyyy')} Overview</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">Your spending overview</p>
+        </div>
+        {/* Month Picker */}
+        <div className="flex items-center gap-1 glass-card px-2 py-1 rounded-lg self-start sm:self-auto">
+          <button onClick={prevMonth} className="p-1 rounded hover:bg-muted transition-colors">
+            <ChevronLeft size={16} className="text-muted-foreground" />
+          </button>
+          <span className="text-sm font-medium px-2 min-w-[110px] text-center">
+            {format(activeMonth, 'MMMM yyyy')}
+          </span>
+          <button onClick={nextMonth} disabled={isCurrentMonth} className="p-1 rounded hover:bg-muted transition-colors disabled:opacity-30">
+            <ChevronRight size={16} className="text-muted-foreground" />
+          </button>
+        </div>
       </div>
 
       {/* Stat Cards */}
@@ -123,7 +156,7 @@ export default function Dashboard() {
               </div>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground text-center py-10">No data yet</p>
+            <p className="text-sm text-muted-foreground text-center py-10">No data for {format(activeMonth, 'MMMM yyyy')}</p>
           )}
         </div>
 
@@ -140,7 +173,7 @@ export default function Dashboard() {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="month" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `₹${v}`} />
+                <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `₹${(v/1000).toFixed(0)}k`} />
                 <RTooltip formatter={(v: number) => formatCurrency(v)} contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }} />
                 <Area type="monotone" dataKey="amount" stroke="hsl(var(--primary))" fill="url(#trendGrad)" strokeWidth={2} />
               </AreaChart>
@@ -195,6 +228,9 @@ export default function Dashboard() {
               <span className="text-sm font-semibold">{formatCurrency(e.amount)}</span>
             </div>
           ))}
+          {recentExpenses.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-4">No expenses yet</p>
+          )}
         </div>
       </div>
     </motion.div>
