@@ -19,6 +19,7 @@ interface ExpenseContextType {
   spendingRisk: SpendingRisk;
   isLoading: boolean;
   addExpense: (e: Omit<Expense, 'id' | 'createdAt'>) => void;
+  addExpensesBulk: (items: Omit<Expense, 'id' | 'createdAt'>[]) => void;
   updateExpense: (id: string, data: Partial<Expense>) => void;
   deleteExpense: (id: string) => void;
   setBudget: (category: string, limit: number, month: string) => void;
