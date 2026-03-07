@@ -176,7 +176,7 @@ export default function CsvImportModal({ open, onOpenChange }: Props) {
 
   const handleImport = () => {
     const errs: string[] = [];
-    let count = 0;
+    const toImport: Omit<import('@/lib/types').Expense, 'id' | 'createdAt'>[] = [];
     for (const row of rows) {
       // skip completely empty rows
       if (row.every(cell => !cell.trim())) continue;
@@ -186,20 +186,23 @@ export default function CsvImportModal({ open, onOpenChange }: Props) {
       const date = tryParseDate(rawDate);
       // strip currency symbols, spaces, commas; take absolute value so debits with "-" sign still import
       const amount = Math.abs(parseFloat(rawAmount.replace(/[^0-9.-]/g, '')));
-      if (!date || isNaN(amount) || amount === 0) { errs.push(`Skipped row: invalid date "${rawDate}" or amount "${rawAmount}"`); continue; }
+      if (!date || isNaN(amount) || amount === 0) {
+        errs.push(`Skipped row: invalid date "${rawDate}" or amount "${rawAmount}"`);
+        continue;
+      }
       const rawCat = get(colMap.category);
       const rawPay = get(colMap.paymentMode);
       const notes = get(colMap.notes);
-      addExpense({
+      toImport.push({
         amount,
         category: guessCategory(rawCat),
         date,
         paymentMode: guessPaymentMode(rawPay),
         notes: notes || rawCat || '',
       });
-      count++;
     }
-    setImportCount(count);
+    if (toImport.length > 0) addExpensesBulk(toImport);
+    setImportCount(toImport.length);
     setErrors(errs.slice(0, 5));
     setStep('done');
   };
