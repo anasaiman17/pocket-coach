@@ -101,6 +101,21 @@ export function ExpenseProvider({ children }: { children: ReactNode }) {
     dbSaveExpense(expense);
   }, []);
 
+  const addExpensesBulk = useCallback((items: Omit<Expense, 'id' | 'createdAt'>[]) => {
+    const now = new Date().toISOString();
+    const newExpenses: Expense[] = items.map(data => ({
+      ...data,
+      id: crypto.randomUUID(),
+      createdAt: now,
+    }));
+    setExpenses(prev => {
+      const merged = [...prev, ...newExpenses];
+      // Persist all at once
+      dbSaveAllExpenses(merged);
+      return merged;
+    });
+  }, []);
+
   const updateExpense = useCallback((id: string, data: Partial<Expense>) => {
     setExpenses(prev => {
       const updated = prev.map(e => (e.id === id ? { ...e, ...data } : e));
