@@ -1,12 +1,13 @@
 import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, FileText, X, CheckCircle2, AlertCircle, ChevronDown } from 'lucide-react';
+import { Upload, X, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useExpenses } from '@/lib/ExpenseContext';
 import { CATEGORIES, PAYMENT_MODES, Category, PaymentMode } from '@/lib/types';
 import { parse } from 'date-fns';
+import { toast } from 'sonner';
 
 interface Props {
   open: boolean;
