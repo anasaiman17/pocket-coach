@@ -21,8 +21,8 @@ export interface DailyBreakdown {
   insights: string[];
 }
 
-export function getDailyBreakdown(expenses: Expense[]): DailyBreakdown {
-  const now = new Date();
+export function getDailyBreakdown(expenses: Expense[], referenceDate?: Date): DailyBreakdown {
+  const now = referenceDate ?? new Date();
   const monthStart = startOfMonth(now);
   const monthEnd = endOfMonth(now);
   const allDays = eachDayOfInterval({ start: monthStart, end: now > monthEnd ? monthEnd : now });
@@ -88,9 +88,9 @@ export interface WeeklyBreakdown {
   insights: string[];
 }
 
-export function getWeeklyBreakdown(expenses: Expense[]): WeeklyBreakdown {
-  const now = new Date();
-  // Get expenses from last 8 weeks
+export function getWeeklyBreakdown(expenses: Expense[], referenceDate?: Date): WeeklyBreakdown {
+  const now = referenceDate ?? new Date();
+  // Get expenses from last 8 weeks relative to reference date
   const eightWeeksAgo = subMonths(now, 2);
   const recent = expenses.filter(e => safeParseDate(e.date) >= eightWeeksAgo);
 
@@ -157,8 +157,8 @@ export interface MonthlyBreakdown {
   insights: string[];
 }
 
-export function getMonthlyBreakdown(expenses: Expense[]): MonthlyBreakdown {
-  const now = new Date();
+export function getMonthlyBreakdown(expenses: Expense[], referenceDate?: Date): MonthlyBreakdown {
+  const now = referenceDate ?? new Date();
   const monthMap: Record<string, number> = {};
   expenses.forEach(e => {
     const m = format(safeParseDate(e.date), 'MMM yy');
