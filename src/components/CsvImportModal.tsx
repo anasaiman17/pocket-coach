@@ -138,7 +138,7 @@ const FIELD_LABELS: Record<keyof ColumnMap, string> = {
 };
 
 export default function CsvImportModal({ open, onOpenChange }: Props) {
-  const { addExpense } = useExpenses();
+  const { addExpensesBulk } = useExpenses();
   const fileRef = useRef<HTMLInputElement>(null);
   const [step, setStep] = useState<'upload' | 'map' | 'done'>('upload');
   const [headers, setHeaders] = useState<string[]>([]);
