@@ -4,12 +4,40 @@ import { useExpenses } from '@/lib/ExpenseContext';
 import { CATEGORIES, CATEGORY_ICONS, formatCurrency, Category } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { format, parseISO, isSameMonth } from 'date-fns';
+import { format, isSameMonth, addMonths, subMonths } from 'date-fns';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+
+function safeParseDate(dateStr: string): Date {
+  if (!dateStr) return new Date(NaN);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+  return new Date(dateStr);
+}
+
+function getMostRecentMonth(expenses: { date: string }[]): Date {
+  if (!expenses.length) return new Date();
+  const sorted = [...expenses].sort((a, b) =>
+    safeParseDate(b.date).getTime() - safeParseDate(a.date).getTime()
+  );
+  return safeParseDate(sorted[0].date);
+}
 
 export default function Budgets() {
   const { expenses, budgets, setBudget } = useExpenses();
-  const currentMonth = format(new Date(), 'yyyy-MM');
-  const [month] = useState(currentMonth);
+
+  const defaultMonth = useMemo(() => getMostRecentMonth(expenses), [expenses]);
+  const [selectedMonth, setSelectedMonth] = useState<Date | null>(null);
+  const activeMonth = selectedMonth ?? defaultMonth;
+  const month = format(activeMonth, 'yyyy-MM');
+
+  const isCurrentMonth = isSameMonth(activeMonth, new Date());
+  const prevMonth = () => setSelectedMonth(subMonths(activeMonth, 1));
+  const nextMonth = () => {
+    const next = addMonths(activeMonth, 1);
+    if (next <= new Date()) setSelectedMonth(next);
+  };
 
   const spending = useMemo(() => {
     const target = new Date(month + '-01');
