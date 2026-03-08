@@ -147,7 +147,7 @@ function extractExpensesFromText(text: string): ParsedExpense[] {
 }
 
 export default function PdfImportModal({ open, onOpenChange }: Props) {
-  const { addExpense } = useExpenses();
+  const { addExpensesBulk } = useExpenses();
   const [step, setStep] = useState<'upload' | 'preview' | 'done'>('upload');
   const [dragging, setDragging] = useState(false);
   const [loading, setLoading] = useState(false);
