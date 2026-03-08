@@ -31,6 +31,7 @@ export default function Analytics() {
 
   const defaultMonth = useMemo(() => getMostRecentMonth(expenses), [expenses]);
   const [selectedMonth, setSelectedMonth] = useState<Date | null>(null);
+  // When new data arrives (e.g. after import), if no manual selection reset to latest month
   const activeMonth = selectedMonth ?? defaultMonth;
 
   const currentMonth = useMemo(
