@@ -40,22 +40,35 @@ export default function Budgets() {
   };
 
   const spending = useMemo(() => {
-    const target = new Date(month + '-01');
-    const filtered = expenses.filter(e => isSameMonth(parseISO(e.date), target));
+    const filtered = expenses.filter(e => isSameMonth(safeParseDate(e.date), activeMonth));
     return filtered.reduce((acc, e) => {
       acc[e.category] = (acc[e.category] || 0) + e.amount;
       return acc;
     }, {} as Record<string, number>);
-  }, [expenses, month]);
+  }, [expenses, activeMonth]);
 
   const getBudgetForCategory = (cat: string) =>
     budgets.find(b => b.category === cat && b.month === month)?.limit || 0;
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Budgets</h1>
-        <p className="text-sm text-muted-foreground">Set and track monthly budgets — {format(new Date(month + '-01'), 'MMMM yyyy')}</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">Budgets</h1>
+          <p className="text-sm text-muted-foreground">Set and track monthly spending limits</p>
+        </div>
+        {/* Month Picker */}
+        <div className="flex items-center gap-1 glass-card px-2 py-1 rounded-lg self-start sm:self-auto">
+          <button onClick={prevMonth} className="p-1 rounded hover:bg-muted transition-colors">
+            <ChevronLeft size={16} className="text-muted-foreground" />
+          </button>
+          <span className="text-sm font-medium px-2 min-w-[110px] text-center">
+            {format(activeMonth, 'MMMM yyyy')}
+          </span>
+          <button onClick={nextMonth} disabled={isCurrentMonth} className="p-1 rounded hover:bg-muted transition-colors disabled:opacity-30">
+            <ChevronRight size={16} className="text-muted-foreground" />
+          </button>
+        </div>
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
