@@ -4,7 +4,6 @@ import { format, parseISO, isWeekend, subMonths, isSameMonth, differenceInHours 
 // Safely parse both 'yyyy-MM-dd' and full ISO strings without timezone shift
 function safeParseDate(dateStr: string): Date {
   if (!dateStr) return new Date(NaN);
-  // If it's just a date (yyyy-MM-dd or dd/MM/yyyy etc.), parse as local midnight
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
     const [y, m, d] = dateStr.split('-').map(Number);
     return new Date(y, m - 1, d);
@@ -12,13 +11,21 @@ function safeParseDate(dateStr: string): Date {
   return parseISO(dateStr);
 }
 
-function currentMonthExpenses(expenses: Expense[]): Expense[] {
-  const now = new Date();
-  return expenses.filter(e => isSameMonth(safeParseDate(e.date), now));
+/** Returns the most recent month that has at least one expense, falling back to today. */
+function getMostRecentMonth(expenses: Expense[]): Date {
+  if (!expenses.length) return new Date();
+  const sorted = [...expenses].sort((a, b) =>
+    safeParseDate(b.date).getTime() - safeParseDate(a.date).getTime()
+  );
+  return safeParseDate(sorted[0].date);
 }
 
-function previousMonthExpenses(expenses: Expense[]): Expense[] {
-  return expenses.filter(e => isSameMonth(safeParseDate(e.date), subMonths(new Date(), 1)));
+function currentMonthExpenses(expenses: Expense[], ref: Date): Expense[] {
+  return expenses.filter(e => isSameMonth(safeParseDate(e.date), ref));
+}
+
+function previousMonthExpenses(expenses: Expense[], ref: Date): Expense[] {
+  return expenses.filter(e => isSameMonth(safeParseDate(e.date), subMonths(ref, 1)));
 }
 
 function categoryTotals(expenses: Expense[]): Record<string, number> {
@@ -34,13 +41,14 @@ function total(expenses: Expense[]): number {
 
 export function generateInsights(expenses: Expense[], budgets: Budget[]): Insight[] {
   const insights: Insight[] = [];
-  const curr = currentMonthExpenses(expenses);
-  const prev = previousMonthExpenses(expenses);
+  const ref = getMostRecentMonth(expenses);
+  const curr = currentMonthExpenses(expenses, ref);
+  const prev = previousMonthExpenses(expenses, ref);
   const currTotals = categoryTotals(curr);
   const prevTotals = categoryTotals(prev);
   const currTotal = total(curr);
   const prevTotal = total(prev);
-  const month = format(new Date(), 'yyyy-MM');
+  const month = format(ref, 'yyyy-MM');
 
   if (prevTotal > 0) {
     const change = ((currTotal - prevTotal) / prevTotal) * 100;
@@ -120,12 +128,13 @@ export function generateInsights(expenses: Expense[], budgets: Budget[]): Insigh
 export function calculateHealthScore(expenses: Expense[], budgets: Budget[]): { score: number; factors: string[] } {
   let score = 70;
   const factors: string[] = [];
-  const curr = currentMonthExpenses(expenses);
-  const prev = previousMonthExpenses(expenses);
+  const ref = getMostRecentMonth(expenses);
+  const curr = currentMonthExpenses(expenses, ref);
+  const prev = previousMonthExpenses(expenses, ref);
   const currTotals = categoryTotals(curr);
   const currTotal = total(curr);
   const prevTotal = total(prev);
-  const month = format(new Date(), 'yyyy-MM');
+  const month = format(ref, 'yyyy-MM');
   const mb = budgets.filter(b => b.month === month);
 
   let over = 0;
@@ -151,13 +160,14 @@ export function calculateHealthScore(expenses: Expense[], budgets: Budget[]): { 
 
 export function detectBadSpending(expenses: Expense[], budgets: Budget[]): BadSpendingAlert[] {
   const alerts: BadSpendingAlert[] = [];
-  const curr = currentMonthExpenses(expenses);
+  const ref = getMostRecentMonth(expenses);
+  const curr = currentMonthExpenses(expenses, ref);
   const currTotals = categoryTotals(curr);
   const currTotal = total(curr);
   const nonEssential = ['Shopping', 'Entertainment', 'Other'];
-  const month = format(new Date(), 'yyyy-MM');
+  const month = format(ref, 'yyyy-MM');
 
-  const sorted = [...curr].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const sorted = [...curr].sort((a, b) => safeParseDate(a.date).getTime() - safeParseDate(b.date).getTime());
   const groups: Record<string, Expense[]> = {};
   sorted.forEach(e => { (groups[e.category] ??= []).push(e); });
 
