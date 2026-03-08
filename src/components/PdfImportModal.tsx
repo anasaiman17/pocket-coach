@@ -147,7 +147,7 @@ function extractExpensesFromText(text: string): ParsedExpense[] {
 }
 
 export default function PdfImportModal({ open, onOpenChange }: Props) {
-  const { addExpense } = useExpenses();
+  const { addExpensesBulk } = useExpenses();
   const [step, setStep] = useState<'upload' | 'preview' | 'done'>('upload');
   const [dragging, setDragging] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -214,13 +214,13 @@ export default function PdfImportModal({ open, onOpenChange }: Props) {
   };
 
   const handleImport = () => {
-    parsed.forEach(exp => addExpense({
+    addExpensesBulk(parsed.map(exp => ({
       date: exp.date,
       amount: exp.amount,
       category: exp.category,
       paymentMode: exp.paymentMode,
       notes: exp.notes,
-    }));
+    })));
     setImportedCount(parsed.length);
     setStep('done');
   };
