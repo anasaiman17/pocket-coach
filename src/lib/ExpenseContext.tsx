@@ -108,12 +108,10 @@ export function ExpenseProvider({ children }: { children: ReactNode }) {
       id: crypto.randomUUID(),
       createdAt: now,
     }));
-    setExpenses(prev => {
-      const merged = [...prev, ...newExpenses];
-      // Persist all at once
-      dbSaveAllExpenses(merged);
-      return merged;
-    });
+    // Persist each new expense individually — safe against overwriting existing data
+    newExpenses.forEach(e => dbSaveExpense(e));
+    // Merge into state in a single atomic update so all pages re-render at once
+    setExpenses(prev => [...prev, ...newExpenses]);
   }, []);
 
   const updateExpense = useCallback((id: string, data: Partial<Expense>) => {
